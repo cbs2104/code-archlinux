@@ -1,0 +1,87 @@
+{
+  "_comment": [
+    "把本文件复制/改名为 config.json 后填写账号密码即可；portal_login.py 首次运行也会自动生成它。",
+    "只有 username / password 是必填项，其余保持默认通常就能工作。",
+    "",
+    "type            认证类型：auto(通用自适应) | srun(深澜) | drcom | h3c | ruijie",
+    "portal_url      认证页面地址。留空 = 自动跟随网关跳转发现；type=srun 时可填服务器根地址，如 http://10.0.0.2",
+    "username_field  用户名对应的表单字段名（留空自动识别），如 user_account / DDDDD / userid",
+    "password_field  密码对应的表单字段名（留空自动识别），如 user_password / upass / passwd",
+    "password_encoding 密码编码：auto | plain | base64 | md5 | md5-upper | md5-16 | sha1 | url",
+    "extra_fields    额外固定参数，例如 {\"0MKKey\": \"123456\", \"wlan_ac_name\": \"AC1\"}",
+    "method          提交方式强制覆盖：GET / POST，留空则用 <form> 自带的方式",
+    "probe_urls      自定义联网探测地址，例如 [{\"url\": \"http://1.1.1.1/generate_204\", \"expect\": \"204\"}]",
+    "local_ip        本机 IP；留空自动获取（少数门户要求上报 wlan_user_ip 时才需要）",
+    "user_agent      浏览器 UA，个别门户会校验；默认是一个 Chrome UA",
+    "环境变量        CAMPUS_PORTAL_USERNAME / CAMPUS_PORTAL_PASSWORD 可以覆盖账号密码（避免密码落到磁盘）",
+    "insecure_tls    忽略 HTTPS 证书错误（校园网自签证书很常见，默认 true）",
+    "use_env_proxy   是否使用系统/环境变量里的 HTTP 代理（校园网内网认证建议保持 false）",
+    "bind_address    把探测/认证的源地址绑定到这个 IPv4（多网卡机器上用来指定走哪张网卡）；留空 = 自动判断",
+    "timeout         单次 HTTP 请求超时秒数",
+    "interval        --watch 守护模式的检测间隔秒数",
+    "verify_interval 登录后再次验证的间隔秒数",
+    "log_file        日志路径，留空则写入用户状态目录（见 README）",
+    "",
+    "---- 下面这段是 Wi-Fi 管理层（auto_connect.py 用）----",
+    "重点：顶层的 username / password / type / portal_url 是**所有网络共用的校园网门户配置**。",
+    "      寝室网、教学楼的 SSID 不同但认证页是同一个校园网门户时，只填顶层这一份就够了。",
+    "wifi.auto_connect  启动时是否按优先级依次连接已保存的网络（默认 true）",
+    "wifi.interactive   已保存网络都连不上时，是否在终端里扫描并询问用户（默认 true）",
+    "wifi.prompt_timeout 询问等待秒数，超时视为跳过（默认 30，0=一直等）",
+    "wifi.portal_via_wifi 多网卡（有线 + 无线）时，是否把门户探测/认证绑定到无线网卡（默认 true；",
+    "                   系统路由不支持时会自动跳过并给出提示，见 README「多网卡机器」）",
+    "wifi.networks      已保存网络列表：[{ssid, key, priority, security, portal{enabled,username,password,type,portal_url}}]",
+    "                   这一块通常不用手写，auto_connect.py 会在询问后自动写入",
+    "wifi.networks[].portal  只有两种情况需要写：",
+    "                   1) 这个网络要用**另一个**账号 → 写 username/password 覆盖顶层的；",
+    "                   2) 这个网络**绝对不要**自动提交校园网账号（酒店/商场公共 Wi-Fi）→ 写 {\"enabled\": false}"
+  ],
+  "username": "20240001",
+  "password": "你的密码",
+  "type": "auto",
+  "portal_url": "",
+  "username_field": "",
+  "password_field": "",
+  "password_encoding": "auto",
+  "extra_fields": {},
+  "method": "",
+  "probe_urls": [],
+  "local_ip": "",
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "insecure_tls": true,
+  "use_env_proxy": false,
+  "bind_address": "",
+  "timeout": 8,
+  "interval": 30,
+  "verify_interval": 2,
+  "log_file": "",
+
+  "wifi": {
+    "auto_connect": true,
+    "interactive": true,
+    "prompt_timeout": 30,
+    "connect_timeout": 25,
+    "scan": true,
+    "portal_via_wifi": true,
+    "networks": [
+      {
+        "ssid": "CampusWiFi",
+        "key": "Wi-Fi 密码（开放网络留空）",
+        "priority": 1,
+        "security": "wpa2",
+        "portal": {
+          "enabled": true,
+          "username": "20240001",
+          "password": "网页认证密码（覆盖上面的 password）",
+          "type": "auto",
+          "portal_url": ""
+        }
+      },
+      {
+        "ssid": "寝室网-SSID（用同一套校园网账号，所以只留 ssid/key/priority）",
+        "key": "Wi-Fi 密码",
+        "priority": 2
+      }
+    ]
+  }
+}

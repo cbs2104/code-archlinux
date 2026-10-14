@@ -1,0 +1,6 @@
+# 本地配置与运行产物（不要提交到 git！config.json 里有明文密码）
+config.json
+*.log
+capture/
+__pycache__/
+*.pyc
