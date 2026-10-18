@@ -12,7 +12,8 @@
 校园网认证方式各不相同，脚本内置了几种常见协议 + 一个通用表单自适应模式：
 
   * ``auto``   : 通用表单自适应（默认，绝大多数网页认证可直接用）
-  * ``srun``   : 深澜 / Srun（密码 base64，``/eportal/portal/login``）
+  * ``srun``   : 深澜 / Srun（自动区分 classic（``/cgi-bin/srun_portal``）与
+                 eportal（``/eportal/portal/login``）两代接口）
   * ``drcom``  : Dr.COM（``DDDDD`` / ``upass``）
   * ``h3c``    : H3C ePortal（``userid`` / ``passwd``）
   * ``ruijie`` : 锐捷 ePortal（``userName`` / ``pwd``）
@@ -87,6 +88,8 @@ CONFIG_TEMPLATE: Dict[str, object] = {
     "password_encoding": "auto",
     "extra_fields": {},
     "method": "",
+    "srun_protocol": "auto",
+    "srun_ac_id": "",
     "probe_urls": [],
     "local_ip": "",
     "user_agent": DEFAULT_USER_AGENT,
@@ -841,7 +844,7 @@ def fetch_login_page(session: PortalSession, cfg: Dict[str, object], url: str,
     page_url = url
     html = ""
     for hop in range(max_hops):
-        resp = session.request(current, "GET", referer=str(cfg.get("portal_url") or ""))
+        resp = _get_with_retry(session, current, log, referer=str(cfg.get("portal_url") or ""))
         page_url, html = resp.url, resp.text
         forms = parse_forms(html, page_url)
         if forms:
@@ -903,6 +906,10 @@ def login_generic(session: PortalSession, cfg: Dict[str, object], log: Logger,
     """通用表单登录：解析认证页 -> 填账号密码（含隐藏字段）-> 提交。"""
     page_url, html, forms = fetch_login_page(session, cfg, portal_url, log)
     if not forms:
+        kind = str(cfg.get("type") or "auto").lower()
+        if kind in ("", "auto") and looks_like_srun(page_url, html):
+            log.info("认证页是深澜（Srun）的 JS 单页应用（没有 <form>），改用 srun 适配器")
+            return login_srun(session, cfg, log, page_url)
         return False, "在 %s 没有找到登录表单（可用 --capture 看看这个页面）" % page_url
     form, user_field, pass_field = pick_form(forms, cfg)
     if form is None or not user_field or not pass_field:
@@ -936,10 +943,157 @@ def login_generic(session: PortalSession, cfg: Dict[str, object], log: Logger,
 
 # --------------------------------------------------------------------------- #
 # 深澜 / Srun 专用适配器
+#
+# 深澜有两代互不兼容的接口，必须分开处理：
+#   * classic : GET /cgi-bin/get_challenge 拿 token，再向 /cgi-bin/srun_portal
+#               提交 chksum（sha1）+ info（XEncode 加密后按自定义字母表 base64）；
+#   * eportal : GET /eportal/portal/login，密码 base64 后直接放在 URL 里。
+#
+# 老式深澜的认证页是 JS 渲染的单页应用（登录框不在 <form> 里），
+# 所以通用表单模式一定报「没有找到登录表单」，必须走这里的接口。
+# 下面的加密实现完全对照门户自己的 JS（Portal.js / all.min.js）写成。
 # --------------------------------------------------------------------------- #
-def login_srun(session: PortalSession, cfg: Dict[str, object], log: Logger,
-               portal_url: str) -> Tuple[bool, str]:
-    """深澜（Srun）eportal 接口：密码 base64，GET 提交，返回 JSONP 回调。"""
+SRUN_B64_ALPHA = "LVoJPiCN2R8G90yg+hmFHuacZ1OWMnrsSTXkYpUq/3dlbfKwv6xztjI7DeBE45QA"
+_STD_B64_ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+_M32 = 0xFFFFFFFF
+
+
+def srun_b64encode(data: bytes) -> str:
+    """深澜自定义字母表的 base64（标准 base64 只是换了字母表，填充仍是 =）。"""
+    return base64.b64encode(data).decode("ascii").translate(
+        str.maketrans(_STD_B64_ALPHA, SRUN_B64_ALPHA))
+
+
+def _srun_words(text: str, with_length: bool) -> List[int]:
+    """把字符串按 4 字节一组塞进 32 位整数（对应 JS 里的 s()）。
+
+    这里只接受单字节字符：srun_info() 用 ensure_ascii=True 生成 JSON，
+    非 ASCII 密码会变成 \\uXXXX 转义，既保持 ASCII 又与原意等价。
+    """
+    for ch in text:
+        if ord(ch) > 0xFF:
+            raise ValueError("srun XEncode 只接受单字节文本（请先用 ensure_ascii 转义）")
+    words: List[int] = []
+    for i in range(0, len(text), 4):
+        word = 0
+        for j in range(4):
+            if i + j < len(text):
+                word |= (ord(text[i + j]) & 0xFF) << (8 * j)
+        words.append(word & _M32)
+    if with_length:
+        words.append(len(text) & _M32)
+    return words
+
+
+def srun_xencode(text: str, key: str) -> bytes:
+    """srun_bx1 的 XEncode（XXTEA 变体），返回原始字节。"""
+    if not text:
+        return b""
+    v = _srun_words(text, True)
+    k = _srun_words(key, False)
+    while len(k) < 4:
+        k.append(0)  # JS 里 k.length = 4 留下空洞，undefined 参与异或时按 0 算
+    n = len(v) - 1
+    z, y = v[n], v[0]
+    c = 0x86014019 | 0x183639A0
+    d = 0
+    q = int(6 + 52 / (n + 1))
+    while q > 0:
+        q -= 1
+        d = (d + c) & _M32
+        e = (d >> 2) & 3
+        p = 0
+        while p < n:
+            y = v[p + 1]
+            m = ((z & _M32) >> 5) ^ ((y << 2) & _M32)
+            m = (m + (((y & _M32) >> 3) ^ ((z << 4) & _M32) ^ ((d ^ y) & _M32))) & _M32
+            m = (m + ((k[(p & 3) ^ e] ^ z) & _M32)) & _M32
+            v[p] = (v[p] + m) & _M32
+            z = v[p]
+            p += 1
+        y = v[0]
+        m = ((z & _M32) >> 5) ^ ((y << 2) & _M32)
+        m = (m + (((y & _M32) >> 3) ^ ((z << 4) & _M32) ^ ((d ^ y) & _M32))) & _M32
+        m = (m + ((k[(p & 3) ^ e] ^ z) & _M32)) & _M32
+        v[n] = (v[n] + m) & _M32
+        z = v[n]
+    out = bytearray()
+    for word in v:
+        out += bytes((word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF, (word >> 24) & 0xFF))
+    return bytes(out)
+
+
+def srun_hmd5(password: str) -> str:
+    """门户 JS 写的是 md5(password, token)，但 md5() 只接受一个参数，token 实际被忽略。"""
+    return hashlib.md5(password.encode("utf-8")).hexdigest()
+
+
+def srun_info(username: str, password: str, ip: str, ac_id: str, token: str) -> str:
+    """拼出 {SRBX1}... 形式的 info（内含明文密码，由 XEncode 保护）。"""
+    payload = {"username": username, "password": password,
+               "ip": ip, "acid": ac_id, "enc_ver": "srun_bx1"}
+    raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True)
+    return "{SRBX1}" + srun_b64encode(srun_xencode(raw, token))
+
+
+def srun_chksum(token: str, username: str, hmd5: str, ac_id: str, ip: str,
+                info: str, n: str = "200", typ: str = "1") -> str:
+    body = token + username + token + hmd5 + token + ac_id + token + ip
+    body += token + n + token + typ + token + info
+    return hashlib.sha1(body.encode("utf-8")).hexdigest()
+
+
+_JSONP_RE = re.compile(r"^\s*[\w$][\w$.]*\s*\((.*)\)\s*;?\s*$", re.S)
+
+
+def jsonp_payload(text: str) -> str:
+    """把 JSONP（dr1004({...}) / cb({...})）剥成纯 JSON 文本。"""
+    body = (text or "").strip()
+    m = _JSONP_RE.match(body)
+    if m:
+        return m.group(1).strip()
+    return body
+
+
+def looks_like_srun(portal_url: str = "", html: str = "") -> bool:
+    low = ("%s %s" % (portal_url or "", html or "")).lower()
+    return ("srun_portal" in low or "srunmobile_portal" in low
+            or "srun_bx1" in low or "/cgi-bin/" in low)
+
+
+def srun_ac_id(cfg: Dict[str, object], *urls: str) -> str:
+    """ac_id：优先显式配置，其次从认证页 URL（?ac_id=32）里抠；都取不到返回空串。"""
+    explicit = str(cfg.get("srun_ac_id") or "").strip()
+    if explicit:
+        return explicit
+    for url in urls:
+        m = re.search(r"[?&]ac_id=(\d+)", url or "")
+        if m:
+            return m.group(1)
+    return ""
+
+
+def srun_discover_ac_id(session: PortalSession, base: str, log: Logger) -> str:
+    """从门户首页 / 跳转里找 ac_id（有的学校把它藏在 index_32.html）。
+
+    只有在 URL 和配置里都没有 ac_id 时才会走到这里；通常是 `portal_url`
+    被写成了服务器根地址（`http://192.168.112.30`）的情况。
+    """
+    for path in ("/", "/index_32.html", "/srun_portal_pc?theme=pro"):
+        try:
+            resp = _get_with_retry(session, base.rstrip("/") + path, log, attempts=2)
+        except NetworkError:
+            continue
+        m = re.search(r"ac_id=(\d+)", "%s %s" % (resp.url or "", resp.text or ""))
+        if m:
+            log.debug("从 %s 发现 ac_id=%s" % (resp.url or path, m.group(1)))
+            return m.group(1)
+    return ""
+
+
+def login_srun_eportal(session: PortalSession, cfg: Dict[str, object], log: Logger,
+                       portal_url: str) -> Tuple[bool, str]:
+    """深澜 eportal 接口：密码 base64，GET 提交，返回 JSONP 回调。"""
     base = base_of(str(cfg.get("portal_url") or portal_url or ""))
     if not base:
         return False, "无法确定深澜认证服务器地址，请在 config.json 填 portal_url（例如 http://10.0.0.2）"
@@ -1002,6 +1156,167 @@ def login_srun(session: PortalSession, cfg: Dict[str, object], log: Logger,
     return False, detail
 
 
+def _get_with_retry(session: PortalSession, url: str, log: Logger, referer: str = "",
+                    attempts: int = 4) -> object:
+    """GET 一次，超时就退避重试。
+
+    实测（2026-10 于 i-HDU 门户）：刚连上校园网时门户会丢 SYN，
+    裸 TCP connect 都可能连续两次 8s 超时，第三次却只要 69ms，
+    所以单发一次请求会让整轮登录白白失败。这里最多试 4 次。
+    """
+    last: Optional[Exception] = None
+    for i in range(max(1, attempts)):
+        try:
+            return session.request(url, "GET", referer=referer)
+        except NetworkError as exc:
+            last = exc
+            if i + 1 < attempts:
+                delay = min(1.0 + i, 3.0)
+                log.debug("请求超时/失败，%.0fs 后第 %d 次重试: %s" % (delay, i + 1, exc))
+                time.sleep(delay)
+    assert last is not None
+    raise last
+
+
+def srun_get_challenge(session: PortalSession, base: str, account: str, ip: str,
+                       log: Logger) -> str:
+    """向 /cgi-bin/get_challenge 要一个本次登录用的 token。"""
+    params = {"callback": "srun_cb", "username": account, "ip": ip}
+    url = base.rstrip("/") + "/cgi-bin/get_challenge?" + urllib.parse.urlencode(params)
+    log.debug("深澜取 token: %s" % url)
+    resp = _get_with_retry(session, url, log)
+    obj: Dict[str, object] = {}
+    try:
+        loaded = json.loads(jsonp_payload(resp.text))
+        if isinstance(loaded, dict):
+            obj = loaded
+    except ValueError:
+        m = re.search(r'"challenge"\s*:\s*"([0-9A-Za-z]+)"', resp.text or "")
+        if m:
+            obj = {"challenge": m.group(1)}
+    token = str(obj.get("challenge") or "")
+    if not token:
+        raise NetworkError("get_challenge 没有返回 challenge（HTTP %s）: %s"
+                           % (resp.status, (resp.text or "")[:120]))
+    return token
+
+
+def login_srun_classic(session: PortalSession, cfg: Dict[str, object], log: Logger,
+                       portal_url: str) -> Tuple[bool, str]:
+    """经典深澜：get_challenge -> srun_portal（chksum + info）。"""
+    base = base_of(str(cfg.get("portal_url") or portal_url or ""))
+    if not base:
+        return False, ("无法确定深澜认证服务器地址，请在 config.json 填 portal_url"
+                       "（例如 http://192.168.112.30）")
+    parsed = urllib.parse.urlparse(base)
+    host = parsed.hostname or ""
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    local_ip = str(cfg.get("local_ip") or "") or get_local_ip(host, port) or ""
+    if not local_ip:
+        return False, "拿不到本机在 %s 网段的 IP，无法做深澜认证" % host
+    account = str(cfg.get("username") or "")
+    domain = str(cfg.get("srun_domain") or "")
+    if domain and "@" not in account:
+        account += domain
+    ac_id = srun_ac_id(cfg, portal_url, str(cfg.get("portal_url") or ""))
+    if not ac_id:
+        ac_id = srun_discover_ac_id(session, base, log)
+    if not ac_id:
+        ac_id = "1"
+    password = str(cfg.get("password") or "")
+    token = srun_get_challenge(session, base, account, local_ip, log)
+    hmd5 = srun_hmd5(password)
+    info = srun_info(account, password, local_ip, ac_id, token)
+    params = {
+        "callback": "srun_cb",
+        "action": "login",
+        "username": account,
+        "password": "{MD5}" + hmd5,
+        "os": str(cfg.get("srun_os") or "Linux"),
+        "name": str(cfg.get("srun_name") or "Linux"),
+        "double_stack": "0",
+        "chksum": srun_chksum(token, account, hmd5, ac_id, local_ip, info),
+        "info": info,
+        "ac_id": ac_id,
+        "ip": local_ip,
+        "n": "200",
+        "type": "1",
+    }
+    url = base.rstrip("/") + "/cgi-bin/srun_portal?" + urllib.parse.urlencode(params)
+    log.info("深澜认证(classic): 服务器=%s 本机IP=%s ac_id=%s 账号=%s"
+             % (base, local_ip, ac_id, account))
+    resp = _get_with_retry(session, url, log, referer=portal_url or base)
+    body = resp.text.strip()
+    detail = "HTTP %s" % resp.status
+    obj = None
+    try:
+        loaded = json.loads(jsonp_payload(body))
+        if isinstance(loaded, dict):
+            obj = loaded
+    except ValueError:
+        obj = None
+    if obj is None:
+        verdict, word = classify_login_text(body)
+        if word:
+            detail += "，页面提示: %s" % word
+        if verdict == "failure":
+            return False, detail
+        return verdict == "success", detail
+    error = str(obj.get("error") or "")
+    suc_msg = str(obj.get("suc_msg") or "")
+    message = str(obj.get("error_msg") or obj.get("msg") or "")
+    detail = "HTTP %s，error=%s" % (resp.status, error or "(空)")
+    if suc_msg:
+        detail += "，suc_msg=%s" % suc_msg
+    if message:
+        detail += "，msg=%s" % message
+    if error in ("ok", "ip_already_online_error") or suc_msg in ("login_ok", "ip_already_online_error"):
+        return True, detail
+    if error:
+        return False, detail
+    verdict, word = classify_login_text(body)
+    if verdict == "success":
+        return True, detail
+    return False, detail
+
+
+def srun_detect_protocol(session: PortalSession, base: str, account: str, ip: str,
+                         log: Logger) -> str:
+    """有 get_challenge 就是经典接口，否则按 eportal 处理。"""
+    try:
+        srun_get_challenge(session, base, account, ip, log)
+        return "classic"
+    except NetworkError as exc:
+        log.debug("深澜 classic 接口不可用，改用 eportal: %s" % exc)
+        return "eportal"
+
+
+def login_srun(session: PortalSession, cfg: Dict[str, object], log: Logger,
+               portal_url: str) -> Tuple[bool, str]:
+    """深澜入口：先判断是哪一代接口，再分派。"""
+    mode = str(cfg.get("srun_protocol") or "auto").strip().lower()
+    if mode not in ("auto", "classic", "eportal"):
+        raise ConfigError("srun_protocol 只能是 auto / classic / eportal，当前是: %s" % mode)
+    if mode == "auto":
+        base = base_of(str(cfg.get("portal_url") or portal_url or ""))
+        if not base:
+            return False, "无法确定深澜认证服务器地址，请在 config.json 填 portal_url"
+        account = str(cfg.get("username") or "")
+        domain = str(cfg.get("srun_domain") or "")
+        if domain and "@" not in account:
+            account += domain
+        ip = str(cfg.get("local_ip") or "")
+        if not ip:
+            parsed = urllib.parse.urlparse(base)
+            ip = get_local_ip(parsed.hostname or "",
+                              parsed.port or (443 if parsed.scheme == "https" else 80)) or ""
+        mode = srun_detect_protocol(session, base, account or "test", ip, log)
+        log.info("深澜接口类型: %s" % mode)
+    if mode == "classic":
+        return login_srun_classic(session, cfg, log, portal_url)
+    return login_srun_eportal(session, cfg, log, portal_url)
+
+
 # --------------------------------------------------------------------------- #
 # 主流程
 # --------------------------------------------------------------------------- #
@@ -1015,6 +1330,9 @@ def run_once(cfg: Dict[str, object], log: Logger) -> int:
     log.info("检测到未联网：%s" % state.detail)
     kind = str(cfg.get("type") or "auto").lower()
     portal_url = str(cfg.get("portal_url") or state.portal_url or "")
+    if kind == "auto" and looks_like_srun(portal_url):
+        log.info("认证页看起来是深澜（Srun），改用 srun 适配器")
+        kind = "srun"
     if not portal_url and kind != "srun":
         log.error("找不到认证页面，请把认证页面地址填到 config.json 的 portal_url")
         return 2
@@ -1085,6 +1403,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-c", "--config", default=str(DEFAULT_CONFIG_PATH),
                         help="配置文件路径（默认：脚本目录下的 config.json）")
     parser.add_argument("--init", action="store_true", help="生成配置模板后退出")
+    parser.add_argument("--force", action="store_true",
+                        help="与 --init 一起用：覆盖已存在的 config.json（会清空原内容）")
     parser.add_argument("-u", "--username", help="学号/账号（覆盖配置文件）")
     parser.add_argument("-p", "--password", help="密码（覆盖配置文件；注意会留在命令历史里）")
     parser.add_argument("-t", "--type", choices=["auto", "srun", "drcom", "h3c", "ruijie"],
@@ -1120,6 +1440,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     config_path = Path(args.config).expanduser()
 
     if args.init:
+        if config_path.exists() and not args.force:
+            print("[ERROR] 配置文件已存在: %s" % config_path, file=sys.stderr)
+            print("        为免覆盖里面的账号密码，--init 不会动已存在的文件；"
+                  "确实要重新生成请加 --force（会清空原内容）。", file=sys.stderr)
+            return 2
         write_config_template(config_path)
         print("已生成配置模板: %s" % config_path)
         print("请填写 username / password（type 一般保持 auto）后重新运行。")

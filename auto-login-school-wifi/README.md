@@ -32,7 +32,7 @@ Windows 走 `netsh wlan`）：开机按优先级连上所有“已保存”的�
 | 自动探测 | 依次访问 `generate_204` / `connecttest.txt` 等轻量探针，用状态码判断是否已联网 |
 | 自动发现入口 | 未联网时跟随 302、`Location`、`<meta refresh>`、JS `location` 跳转找到认证页 |
 | 通用表单自适应 | 解析页面里所有 `<form>`，按字段名启发式识别账号/密码，**并原样带上隐藏字段（token 等）** |
-| 协议预设 | `srun`(深澜) / `drcom` / `h3c` / `ruijie`，字段名与密码编码都能被配置覆盖 |
+| 协议预设 | `srun`(深澜，自动区分 classic / eportal 两代接口) / `drcom` / `h3c` / `ruijie`，字段名与密码编码都能被配置覆盖 |
 | 幂等 | 已经联网就什么都不做，不会反复登录（避免账号被风控） |
 | 结果以联网为准 | 提交后重新探测确认，不轻信页面上的“成功”字样 |
 | 常驻重连 | `--watch`；Linux 用 systemd timer / NetworkManager 钩子，Windows 用计划任务 |
@@ -57,7 +57,7 @@ auto-login-school-wifi/
 ├── tests/
 │   ├── mock_portal.py     # 本地模拟门户（开发自测用，可独立运行）
 │   ├── selftest.py        # 门户认证端到端自测（8 个用例 / 13 项断言）
-│   └── test_wifi.py       # Wi-Fi 层离线自测（117 项断言，不需要网卡/不联网）
+│   └── test_wifi.py       # Wi-Fi 层离线自测（149 项断言，不需要网卡/不联网）
 ├── linux/
 │   ├── install.sh         # systemd --user 服务 + timer（可选 NM 钩子、桌面询问）
 │   ├── uninstall.sh
@@ -78,6 +78,7 @@ Windows 把下面命令里的 `python3` 换成 `python`（或 `py -3`）即可�
 
 ```bash
 # 1) 生成配置模板（POSIX 下会自动 chmod 600）
+#    已存在 config.json 时不会覆盖（避免清空账号密码）；确实要重来加 --force
 python3 portal_login.py --init
 
 # 2) 编辑 config.json，至少填 username / password；type 一般保持 "auto"
@@ -112,7 +113,8 @@ python3 auto_connect.py --boot     # 模拟开机自启：只连已保存网络 
 ## 命令行参数
 
 ```
-usage: portal_login.py [-h] [-c CONFIG] [--init] [-u USERNAME] [-p PASSWORD]
+usage: portal_login.py [-h] [-c CONFIG] [--init] [--force]
+                       [-u USERNAME] [-p PASSWORD]
                        [-t {auto,srun,drcom,h3c,ruijie}]
                        [--portal-url PORTAL_URL]
                        [--password-encoding PASSWORD_ENCODING] [--watch]
@@ -122,7 +124,8 @@ usage: portal_login.py [-h] [-c CONFIG] [--init] [-u USERNAME] [-p PASSWORD]
 
 options:
   -c, --config CONFIG      配置文件路径（默认：脚本目录下的 config.json）
-  --init                   生成配置模板后退出
+  --init                   生成配置模板后退出（已存在则拒绝，见 --force）
+  --force                  与 --init 一起用：覆盖已存在的 config.json（会清空原内容）
   -u, --username USERNAME  学号/账号（覆盖配置文件）
   -p, --password PASSWORD  密码（覆盖配置文件；注意会留在命令历史里）
   -t, --type {auto,srun,drcom,h3c,ruijie}
@@ -317,8 +320,10 @@ python3 portal_login.py --status --bind-address 10.150.175.108  # 手动指定�
 | 字段 | 默认 | 说明 |
 | --- | --- | --- |
 | `username` / `password` | — | **必填**：学号/工号与密码 |
-| `type` | `"auto"` | `auto` 通用自适应；`srun` 深澜；`drcom`；`h3c`；`ruijie` |
+| `type` | `"auto"` | `auto` 通用自适应（遇到深澜的 JS 页面会自动切到 `srun`）；`srun` 深澜；`drcom`；`h3c`；`ruijie` |
 | `portal_url` | `""` | 认证页地址。留空 = 自动跟随网关跳转发现；`type=srun` 时可以只填服务器根地址，如 `http://10.0.0.2` |
+| `srun_protocol` | `"auto"` | 深澜接口世代：`auto` 先探测、`classic`（`/cgi-bin/srun_portal`）、`eportal`（`/eportal/portal/login`） |
+| `srun_ac_id` | `""` | 深澜的 `ac_id`，留空自动从认证页 URL（`?ac_id=32`）里取，取不到用 `1` |
 | `username_field` | `""` | 账号字段名，留空自动识别。例：`DDDDD`、`userid`、`user_account` |
 | `password_field` | `""` | 密码字段名，留空自动识别。例：`upass`、`passwd`、`user_password` |
 | `password_encoding` | `"auto"` | `auto` / `plain` / `base64` / `md5` / `md5-upper` / `md5-16` / `md5-16-upper` / `sha1` / `url`；`auto` 会先看页面里有没有 `btoa`、`md5` 再决定 |
@@ -508,7 +513,7 @@ Content-Type: text/html; charset=gb2312
 | 不是 POST 提交 | 设 `method` 为 `"GET"` 或 `"POST"` |
 | 密码先做了 md5 / base64 | 设 `password_encoding` |
 | 认证页不在自动发现的地址上 | 填 `portal_url`（浏览器地址栏里那个就行） |
-| 是“深澜”那套 `/eportal/portal/login` 接口 | `"type": "srun"`，`portal_url` 填认证服务器根地址如 `http://10.0.0.2` |
+| 认证页地址里有 `srun_portal_pc` 或 `/cgi-bin/`（深澜） | `"type": "srun"`（一般不用手填，`auto` 也会自动识别）；`portal_url` 可只填服务器根地址如 `http://192.168.112.30` |
 | 探测地址被校园网劫持 | 用 `probe_urls` 换成学校自己的 `generate_204` 地址 |
 | 连的是寝室网，认证页却是校园网的 | 顶层 `username`/`password` 对所有网络生效，`wifi.networks` 里只写 `ssid`/`key`/`priority` 即可，见「认证页是校园网、SSID 却是寝室网」 |
 | 有线插着时探测总说“已联网，无需认证” | 默认路由在有线上，门户探测跟着它走；看 `--list` 的提示，必要时拔掉网线或用 `bind_address`，见「多网卡机器」 |
@@ -523,6 +528,26 @@ python3 portal_login.py --debug
 日志会打印识别到的账号字段、密码字段、密码编码、提交地址、随同提交的字段，
 以及返回结果摘要。看到 `[OK] 校园网自动登录成功` 就成了。
 
+### 深澜（Srun）的两代接口
+
+深澜门户有两套互不兼容的登录接口，脚本会先探测再决定（也可用 `srun_protocol` 强制）：
+
+| 世代 | 判据 | 登录方式 |
+| --- | --- | --- |
+| classic | `GET /cgi-bin/get_challenge` 返回 `challenge` | `GET /cgi-bin/srun_portal`，带 `chksum`（sha1）+ `info`（XEncode 后按自定义字母表 base64） |
+| eportal | 没有 `get_challenge`，`/eportal/portal/login` 可访问 | 密码 base64 后直接放在 URL 里 |
+
+classic 的加密实现是**逐字节对照门户自己的 JS**（`Portal.js` 的 `encode()` +
+`all.min.js` 里 `jquery-base64` 的 `setAlpha` 字母表）写的，几处容易踩错的点：
+
+* `hmd5 = md5(password, token)` 里的 `md5()` 只接受一个参数，**token 实际被忽略**，就是 `md5(password)`；
+* `info` 里的 `password` 是**明文**（外面由 XEncode 保护），不是 md5；
+* base64 用的是 `LVoJPiCN2R8G90yg+hmFHuacZ1OWMnrsSTXkYpUq/3dlbfKwv6xztjI7DeBE45QA`，不是标准字母表；
+* `ac_id` 从认证页 URL 的 `?ac_id=` 取（常见 32），`n=200`、`type=1`、`double_stack=0` 要原样带上。
+
+`tests/test_wifi.py` 里固化了由该 JS 算出的黄金向量（`info` / `chksum` / `md5`），
+并用本地 mock 门户跑完整提交，所以以后改这块不需要再连真实校园网就能验证。
+
 ## 常见问题
 
 **Q：提示“找不到认证页面”，但浏览器打开就能跳出来？**
@@ -531,6 +556,18 @@ python3 portal_login.py --debug
 
 **Q：提示“没能自动识别账号/密码字段”？**
 看 `--capture` 抓到的表单 HTML，把两个字段名填进 `username_field` / `password_field`。
+
+**Q：提示“在 http://…/srun_portal_pc?ac_id=32 没有找到登录表单”？**
+这是深澜（Srun）的门户：登录框由 JS 动态渲染，HTML 里本来就没有 `<form>`。
+脚本现在会识别出这种情况并自动切到 `srun` 适配器：先 `GET /cgi-bin/get_challenge`
+取 token，再按门户自己的 JS 算法算出 `chksum`（sha1）和 `info`（XEncode + 自定义字母表 base64），
+`GET /cgi-bin/srun_portal` 提交。老版本只支持 `/eportal/portal/login`，遇到这种门户必然失败。
+若还报这个错，说明页面既没有深澜特征也真没有表单，用 `--capture` 抓下来再适配。
+
+**Q：日志里偶尔出现“请求认证服务器失败: timed out”，但浏览器打得开？**
+实测刚连上 i-HDU 时门户会丢 SYN——裸 TCP `connect` 都可能连续两次 8 秒超时，
+第三次却只要 69ms。脚本现在对门户请求做最多 4 次退避重试，4 次都超时才是真的连不上。
+校园网门户比较慢时，也可以把 `timeout` 从 8 调到 12。
 
 **Q：页面返回“登录成功”，但复检仍显示未联网？**
 说明提交没被网关采纳，通常是缺 `wlan_user_ip` / `wlan_ac_name` 之类的参数。
@@ -621,7 +658,7 @@ python3 tests/mock_portal.py --port 18080         # 然后浏览器访问 http:/
 python3 tests/test_wifi.py
 ```
 
-覆盖 117 项断言：`nmcli` / `netsh` 输出解析（含中文界面、SSID 带冒号、转义还原）、
+覆盖 149 项断言：`nmcli` / `netsh` 输出解析（含中文界面、SSID 带冒号、转义还原）、
 Windows WLAN profile XML 生成与转义、优先级排序、按优先级依次连接与失败回退、
 向导的「保存 / 只连一次 / 开放网络 / 跳过」四种流程、公共网络缺凭据时的询问与写盘、
 `--connect --save --priority`、`--forget`、`--list` 等命令行为。

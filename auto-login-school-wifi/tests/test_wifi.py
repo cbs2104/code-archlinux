@@ -11,6 +11,7 @@ import socket
 import sys
 import tempfile
 import threading
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -640,6 +641,159 @@ def test_bound_socket_ipv4_only():
         server.server_close()
 
 
+def test_srun_crypto():
+    print("\n== 深澜（Srun）加密与识别 ==")
+    # 黄金向量由门户自己的 JS（Portal.js 的 encode + all.min.js 的
+    # jquery-base64 自定义字母表）算出，Python 实现必须与其逐字节一致。
+    token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    info = portal_login.srun_info("25060814", "Test@12345", "127.0.0.1", "32", token)
+    eq("Srun info 与门户 JS 一致",
+       info,
+       "{SRBX1}LT/cDcR4QUwDTn7fbb1N8/hU9z3aqmlIKqV72/mSra/V2qUwoNlqyx0bZvZpOg"
+       "/otLEdZraDS5yCus+IkVfsX43FPn961Ky1u7xQuhpsDlz+ulIiB6vv3rUhFlA+EfEciJv"
+       "322WjvwM=")
+    eq("Srun 密码 MD5（token 被忽略）",
+       portal_login.srun_hmd5("Test@12345"), "5c428d8875d2948607f3e3fe134d71b4")
+    eq("Srun chksum 与门户 JS 一致",
+       portal_login.srun_chksum(token, "25060814",
+                                portal_login.srun_hmd5("Test@12345"),
+                                "32", "127.0.0.1", info),
+       "ae4c4beacf1cf392a6bb732d2ea8a1ce00aaacb9")
+    eq("空串 XEncode 返回空", portal_login.srun_xencode("", token), b"")
+    try:
+        portal_login.srun_xencode("中文", token)
+        check("非单字节文本给出明确错误", False, "居然没报错")
+    except ValueError as exc:
+        check("非单字节文本给出明确错误", "单字节" in str(exc), repr(exc))
+
+    eq("JSONP 剥壳（函数名）", portal_login.jsonp_payload('cb({"error":"ok"});'),
+       '{"error":"ok"}')
+    eq("JSONP 剥壳（jQuery 风格）",
+       portal_login.jsonp_payload('jQuery1112_17({"a":1})'), '{"a":1}')
+    eq("纯 JSON 原样返回", portal_login.jsonp_payload('  {"a":1}  '), '{"a":1}')
+
+    check("识别 srun_portal 页面",
+          portal_login.looks_like_srun("http://1.2.3.4/srun_portal_pc?ac_id=32&theme=pro"))
+    check("识别 /cgi-bin/ 接口",
+          portal_login.looks_like_srun("", '<script src="/cgi-bin/get_challenge">'))
+    check("普通表单门户不误判",
+          not portal_login.looks_like_srun("http://1.2.3.4/login", "<form action=/login>"))
+
+    eq("ac_id 优先取配置", portal_login.srun_ac_id({"srun_ac_id": "9"},
+                                                 "http://h/srun_portal_pc?ac_id=32"), "9")
+    eq("ac_id 从页面 URL 解析",
+       portal_login.srun_ac_id({}, "http://h/srun_portal_pc?ac_id=32&theme=pro"), "32")
+    eq("ac_id 找不到时返回空串（交给页面发现）",
+       portal_login.srun_ac_id({}, "http://h/index.html"), "")
+
+
+def test_srun_classic_login():
+    print("\n== 深澜经典接口端到端（本地 mock 门户）==")
+    token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    want_info = ("{SRBX1}LT/cDcR4QUwDTn7fbb1N8/hU9z3aqmlIKqV72/mSra/V2qUwoNlqyx0bZvZ"
+                 "pOg/otLEdZraDS5yCus+IkVfsX43FPn961Ky1u7xQuhpsDlz+ulIiB6vv3rUhFlA+Ef"
+                 "EciJv322WjvwM=")
+    want_chk = "ae4c4beacf1cf392a6bb732d2ea8a1ce00aaacb9"
+    seen = {}
+
+    class SrunHandler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_GET(self):
+            parsed = urllib.parse.urlparse(self.path)
+            if parsed.path == "/cgi-bin/get_challenge":
+                body = 'srun_cb({"challenge":"%s","error":"ok","res":"ok"})' % token
+            elif parsed.path == "/srun_portal_pc":
+                # 门户把自己的 ac_id 写在 JS 里，供「portal_url 只填根地址」时发现
+                body = "<script>var acId=32; var u='/srun_portal_pc?ac_id=32&theme=pro';</script>"
+            elif parsed.path == "/cgi-bin/srun_portal":
+                q = urllib.parse.parse_qs(parsed.query)
+                seen.update({k: v[0] for k, v in q.items()})
+                body = 'srun_cb({"error":"ok","suc_msg":"login_ok"})'
+            else:
+                self.send_response(404)
+                self.end_headers()
+                return
+            raw = body.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/javascript; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), SrunHandler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = "http://127.0.0.1:%d" % server.server_address[1]
+    try:
+        log = quiet_log()
+        session = portal_login.PortalSession(
+            {"timeout": 5, "insecure_tls": True, "use_env_proxy": False}, log)
+        cfg = {"username": "25060814", "password": "Test@12345",
+               "local_ip": "127.0.0.1", "portal_url": base}
+        ok, detail = portal_login.login_srun_classic(
+            session, cfg, log, base + "/srun_portal_pc?ac_id=32&theme=pro")
+        eq("mock 深澜 classic 登录成功", ok, True)
+        eq("返回内容带 suc_msg", "login_ok" in detail, True)
+        eq("提交了 action=login", seen.get("action"), "login")
+        eq("提交了 {MD5} 密码", seen.get("password"),
+           "{MD5}5c428d8875d2948607f3e3fe134d71b4")
+        eq("提交了 ac_id=32", seen.get("ac_id"), "32")
+        eq("提交了本机 IP", seen.get("ip"), "127.0.0.1")
+        eq("提交了 n=200 / type=1", (seen.get("n"), seen.get("type")), ("200", "1"))
+        eq("info 与黄金向量一致", seen.get("info"), want_info)
+        eq("chksum 与黄金向量一致", seen.get("chksum"), want_chk)
+        eq("探测协议为 classic",
+           portal_login.srun_detect_protocol(session, base, "25060814",
+                                             "127.0.0.1", log), "classic")
+
+        # portal_url 只写服务器根地址（没有 ?ac_id=）时，应从门户页面里发现 ac_id
+        seen.clear()
+        ok2, _ = portal_login.login_srun_classic(
+            session, {"username": "25060814", "password": "Test@12345",
+                      "local_ip": "127.0.0.1", "portal_url": base}, log, base)
+        eq("portal_url 只填根地址也能登录", ok2, True)
+        eq("ac_id 从门户页面自动发现", seen.get("ac_id"), "32")
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_srun_detect_eportal():
+    print("\n== 深澜 eportal 回退（没有 get_challenge 时）==")
+
+    class EportalOnly(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_GET(self):
+            is_challenge = self.path.startswith("/cgi-bin/get_challenge")
+            raw = b"<html>not found</html>" if is_challenge else b""
+            self.send_response(200 if is_challenge else 404)
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), EportalOnly)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = "http://127.0.0.1:%d" % server.server_address[1]
+    try:
+        log = quiet_log()
+        session = portal_login.PortalSession(
+            {"timeout": 5, "insecure_tls": True, "use_env_proxy": False}, log)
+        eq("没有 challenge 时回退 eportal",
+           portal_login.srun_detect_protocol(session, base, "u", "127.0.0.1", log),
+           "eportal")
+        try:
+            portal_login.login_srun(session, {"srun_protocol": "bogus"}, log, base)
+            check("非法 srun_protocol 报错", False, "居然没报错")
+        except portal_login.ConfigError:
+            check("非法 srun_protocol 报错", True)
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def test_portal_opt_out():
     print("\n== 显式关闭自动认证（portal.enabled=false）==")
     with tempfile.TemporaryDirectory() as tmp:
@@ -690,6 +844,21 @@ def test_cli_connect_save():
         eq("保存了优先级", nets[0]["priority"], 1)
 
 
+def test_init_does_not_overwrite():
+    print("\n== --init 不覆盖已有配置（避免清空账号密码）==")
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "config.json"
+        path.write_text('{"username": "25060814", "password": "keepme"}', encoding="utf-8")
+        code = portal_login.main(["--init", "--config", str(path)])
+        eq("已有配置时 --init 返回 2", code, 2)
+        eq("原有密码没被清空",
+           json.loads(path.read_text(encoding="utf-8"))["password"], "keepme")
+        code = portal_login.main(["--init", "--force", "--config", str(path)])
+        eq("加 --force 才重新生成", code, 0)
+        eq("重新生成后是空模板",
+           json.loads(path.read_text(encoding="utf-8"))["password"], "")
+
+
 def test_cli_modes():
     print("\n== 命令行整体行为 ==")
     with tempfile.TemporaryDirectory() as tmp:
@@ -723,6 +892,10 @@ def main():
         test_portal_bind_address,
         test_portal_session_bind,
         test_bound_socket_ipv4_only,
+        test_srun_crypto,
+        test_srun_classic_login,
+        test_srun_detect_eportal,
+        test_init_does_not_overwrite,
         test_portal_opt_out,
         test_forget,
         test_cli_connect_save,
