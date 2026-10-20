@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: deskpet:; media-src 'self' data: blob: deskpet:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws: wss: deskpet:; font-src 'self' data:; object-src 'none'; base-uri 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DeskPet 设置</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">🐾</div>
+        <div>
+          <h1>DeskPet</h1>
+          <p>桌面小搭档</p>
+        </div>
+      </div>
+
+      <nav id="nav" class="nav">
+        <button data-tab="pet"><span>🐱</span>我的桌宠</button>
+        <button data-tab="studio"><span>✂️</span>抠图工坊</button>
+        <button data-tab="actions"><span>🎬</span>动作与声音</button>
+        <button data-tab="voice"><span>🗣️</span>语音</button>
+        <button data-tab="interaction"><span>🖱️</span>互动与快捷键</button>
+        <button data-tab="ai"><span>🧠</span>AI 伙伴</button>
+        <button data-tab="about"><span>ℹ️</span>关于</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span id="save-state">修改会自动保存</span>
+        <button id="open-data" class="link-button">打开数据目录</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-text">
+          <h2 id="page-title">我的桌宠</h2>
+          <p id="page-desc">管理形象、大小和位置</p>
+        </div>
+        <div class="topbar-actions">
+          <button id="toggle-pet" class="btn btn-ghost">显示 / 隐藏桌宠</button>
+          <button id="open-chat" class="btn btn-primary">💬 和它聊天</button>
+        </div>
+      </header>
+      <div id="content" class="content"></div>
+    </main>
+
+    <div id="toast-host"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

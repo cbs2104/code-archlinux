@@ -1,0 +1,50 @@
+{
+  "name": "deskpet",
+  "productName": "DeskPet",
+  "version": "1.0.3",
+  "description": "Cross-platform Electron desktop pet: cut out your own character, react to keyboard/mouse, play custom actions and voices, and chat with AI.",
+  "desktopName": "deskpet.desktop",
+  "main": "./out/main/index.js",
+  "license": "MIT",
+  "author": "DeskPet Contributors",
+  "homepage": "https://github.com/DeskPet/DeskPet#readme",
+  "keywords": [
+    "electron",
+    "desktop-pet",
+    "shimeji",
+    "ai",
+    "cross-platform"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs preview",
+    "build": "npm run typecheck && electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "node scripts/test-shared.mjs",
+    "icons": "node scripts/generate-icons.mjs",
+    "pack:dir": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:linux:appimage": "npm run build && electron-builder --linux AppImage",
+    "dist:linux:pacman": "npm run build && electron-builder --linux pacman",
+    "release": "npm run build && electron-builder --publish always"
+  },
+  "dependencies": {},
+  "optionalDependencies": {
+    "uiohook-napi": "^1.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "electron": "^44.9.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^6.0.0",
+    "esbuild": "^0.28.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.0.0"
+  }
+}

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" width="1200" height="340">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#12172a" />
+      <stop offset="55%" stop-color="#151a2b" />
+      <stop offset="100%" stop-color="#241a24" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffb08e" />
+      <stop offset="100%" stop-color="#f47264" />
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff8f0" />
+      <stop offset="100%" stop-color="#ffe4d1" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="340" rx="28" fill="url(#bg)" />
+  <circle cx="1110" cy="42" r="180" fill="#ff8f7a" opacity="0.07" />
+  <circle cx="1030" cy="310" r="150" fill="#60a5fa" opacity="0.06" />
+
+  <g transform="translate(64 52)">
+    <rect width="236" height="236" rx="58" fill="url(#accent)" />
+    <path d="M72 118 L67 62 L104 88 Z" fill="#fff2e7" />
+    <path d="M164 118 L169 62 L132 88 Z" fill="#fff2e7" />
+    <path
+      d="M118 80 C160 80 190 110 190 152 C190 196 160 224 118 224 C76 224 46 196 46 152 C46 110 76 80 118 80 Z"
+      fill="url(#body)"
+    />
+    <ellipse cx="96" cy="158" rx="11" ry="14" fill="#3f2b2b" />
+    <ellipse cx="100" cy="153" rx="4" ry="5" fill="#fff" />
+    <ellipse cx="140" cy="158" rx="11" ry="14" fill="#3f2b2b" />
+    <ellipse cx="144" cy="153" rx="4" ry="5" fill="#fff" />
+    <path d="M112 172 Q118 178 124 172" fill="none" stroke="#a8675c" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  <text x="348" y="128" font-family="'Noto Sans SC','Microsoft YaHei',sans-serif" font-size="64" font-weight="700" fill="#ffffff" letter-spacing="2">DeskPet</text>
+  <text x="350" y="176" font-family="'Noto Sans SC','Microsoft YaHei',sans-serif" font-size="23" fill="#c9d2e3">把你的角色抠出来，放到桌面上</text>
+  <text x="350" y="220" font-family="'Noto Sans SC','Microsoft YaHei',sans-serif" font-size="19" fill="#8f9bb3">自定义抠图 · 键鼠联动 · 动作与语音 · AI 聊天 · Windows / Linux / macOS</text>
+
+  <g transform="translate(350 252)">
+    <rect width="132" height="34" rx="17" fill="#ff8f7a" opacity="0.16" stroke="#ff8f7a" stroke-opacity="0.4" />
+    <text x="66" y="23" text-anchor="middle" font-family="'Noto Sans SC',sans-serif" font-size="14" fill="#ffcbbd">Electron</text>
+    <rect x="146" width="132" height="34" rx="17" fill="#60a5fa" opacity="0.12" stroke="#60a5fa" stroke-opacity="0.32" />
+    <text x="212" y="23" text-anchor="middle" font-family="'Noto Sans SC',sans-serif" font-size="14" fill="#bfdbfe">OpenAI 兼容</text>
+    <rect x="292" width="132" height="34" rx="17" fill="#6ee7b7" opacity="0.12" stroke="#6ee7b7" stroke-opacity="0.3" />
+    <text x="358" y="23" text-anchor="middle" font-family="'Noto Sans SC',sans-serif" font-size="14" fill="#a7f3d0">MIT License</text>
+  </g>
+</svg>

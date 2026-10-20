@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: deskpet:; media-src 'self' data: blob: deskpet:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws: wss: deskpet:; font-src 'self' data:; object-src 'none'; base-uri 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DeskPet</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <div id="bubble" class="bubble hidden">
+        <span id="bubble-text"></span>
+        <button id="bubble-close" title="收起" aria-label="收起">×</button>
+      </div>
+
+      <div id="zzz" class="zzz hidden" aria-hidden="true">
+        <span>Z</span><span>z</span><span>z</span>
+      </div>
+
+      <section id="chat" class="chat hidden" aria-label="和桌宠聊天">
+        <header class="chat-head">
+          <div class="chat-title">
+            <span class="status-dot"></span>
+            <span id="chat-name">桌宠</span>
+            <small id="chat-model"></small>
+          </div>
+          <div class="chat-actions">
+            <button id="chat-clear" title="清空对话" aria-label="清空对话">🧹</button>
+            <button id="chat-close" title="收起聊天" aria-label="收起聊天">▾</button>
+          </div>
+        </header>
+        <div id="chat-log" class="chat-log" role="log"></div>
+        <div id="chat-status" class="chat-status hidden"></div>
+        <footer class="chat-input">
+          <button id="chat-mic" title="按住说话 / 点击开始录音" aria-label="语音输入">🎤</button>
+          <textarea
+            id="chat-text"
+            rows="1"
+            placeholder="和我说点什么…（Enter 发送，Shift+Enter 换行）"
+          ></textarea>
+          <button id="chat-send" class="send" title="发送" aria-label="发送">➤</button>
+        </footer>
+      </section>
+
+      <div id="pet-area">
+        <div id="controls" class="controls">
+          <button data-action="chat" title="聊天" aria-label="聊天">💬</button>
+          <button data-action="settings" title="设置" aria-label="设置">⚙</button>
+          <button data-action="hide" title="隐藏桌宠" aria-label="隐藏桌宠">✕</button>
+        </div>
+        <div id="sprite-wrap">
+          <div id="sprite">
+            <div id="pet-base"></div>
+            <img id="pet-frame" class="pet-frame" alt="" draggable="false" hidden />
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

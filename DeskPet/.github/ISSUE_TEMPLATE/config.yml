@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 使用问题 / 讨论
+    url: https://github.com/DeskPet/DeskPet/discussions
+    about: 安装、使用、AI 配置等问题可以先在讨论区交流
+  - name: 🔐 安全漏洞
+    url: https://github.com/DeskPet/DeskPet/security/advisories/new
+    about: 请通过私密渠道报告安全问题
