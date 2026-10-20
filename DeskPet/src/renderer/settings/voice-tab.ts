@@ -62,7 +62,7 @@ export class VoiceTab implements TabView {
       card(
         section(
           '语音合成（TTS）',
-          '让桌宠用系统语音读出动作台词和 AI 回复。Windows / macOS 自带语音；Linux 需要 speech-dispatcher 或安装 espeak-ng。',
+          '让桌宠用系统语音读出动作台词和 AI 回复。Linux 需要 speech-dispatcher 或安装 espeak-ng。',
           toggle({
             label: '启用语音',
             checked: cfg.enabled,

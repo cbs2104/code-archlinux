@@ -33,10 +33,6 @@ body:
     attributes:
       label: 操作系统
       options:
-        - Windows 11
-        - Windows 10
-        - macOS (Apple Silicon)
-        - macOS (Intel)
         - Arch Linux
         - 其他 Linux
     validations:
@@ -45,9 +41,8 @@ body:
   - type: dropdown
     id: session
     attributes:
-      label: Linux 会话 / 桌面环境（其他系统可跳过）
+      label: Linux 会话 / 桌面环境
       options:
-        - 不适用
         - X11 (KDE)
         - Wayland + XWayland (KDE)
         - X11 (GNOME)
@@ -61,7 +56,7 @@ body:
     attributes:
       label: DeskPet 版本
       description: 设置 → 关于 里可以看到；开发模式请填 commit
-      placeholder: 1.0.3
+      placeholder: 1.1.0
     validations:
       required: true
 

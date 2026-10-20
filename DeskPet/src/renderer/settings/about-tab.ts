@@ -86,7 +86,7 @@ export class AboutTab implements TabView {
           ),
           shortcut('拖动桌宠', '可以把它拎起来、扔到屏幕任意位置，松手后会落地'),
           shortcut('Esc', '收起聊天窗口'),
-          shortcut('Ctrl/Cmd + S', '桌宠会以为你保存了文件（可在动作里改）'),
+          shortcut('Ctrl + S', '桌宠会以为你保存了文件（可在动作里改）'),
           shortcut('Enter', '桌宠会点头（可在动作里改）'),
           hint('托盘图标里也可以显示/隐藏、打招呼、重置位置和开关机自启。')
         )
@@ -94,17 +94,15 @@ export class AboutTab implements TabView {
       card(
         section(
           '构建',
-          '仓库同时提供 Windows / macOS / Linux 的 electron-builder 配置，以及 GitHub Actions 自动打包。',
+          'DeskPet 目前只面向 Linux，提供 electron-builder 配置和 GitHub Actions 自动打包。',
           h(
             'div',
             { class: 'code-block' },
             h('code', { text: 'npm install' }),
             h('code', { text: 'npm run dev' }),
-            h('code', { text: 'npm run dist:win' }),
-            h('code', { text: 'npm run dist:linux' }),
-            h('code', { text: 'npm run dist:mac' })
+            h('code', { text: 'npm run dist:linux' })
           ),
-          hint('Linux 使用 AppImage / deb / rpm / pacman 目标；Windows 使用 NSIS 安装包和便携版；macOS 使用 dmg / zip。')
+          hint('Linux 打包目标：AppImage / deb / rpm / pacman。')
         )
       ),
       card(

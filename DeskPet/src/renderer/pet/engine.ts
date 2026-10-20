@@ -11,7 +11,7 @@ import type {
 } from '../../shared/types'
 import { setMood as applyBuiltinMood, setPupilOffset, type PetMood } from './builtin'
 
-type EngineState = 'idle' | 'walk' | 'air' | 'drag' | 'land' | 'sleep'
+type EngineState = 'idle' | 'walk' | 'drag' | 'land' | 'sleep'
 
 interface ActiveAction {
   action: PetAction
@@ -41,22 +41,19 @@ export interface EngineOptions {
   env: PetEnv
 }
 
-const GRAVITY = 2400
+const DRAG_REST_MS = 60_000
 
 export class PetEngine {
   private state: EngineState = 'idle'
   private pos: { x: number; y: number }
-  private vel = { x: 0, y: 0 }
   private dragStart = { pointerX: 0, pointerY: 0, windowX: 0, windowY: 0 }
-  private dragLast = { x: 0, y: 0, at: 0 }
-  private dragVelocity = { x: 0, y: 0 }
   private dragMoved = false
   private dragging = false
   private env: PetEnv
-  private groundY: number
   private facing: 1 | -1 = 1
   private targetX = 0
   private nextWanderAt = 0
+  private restUntil = 0
   private sleeping = false
   private chatOpen = false
   private mood: PetMood = 'neutral'
@@ -82,8 +79,6 @@ export class PetEngine {
   constructor(private readonly options: EngineOptions) {
     this.env = options.env
     this.pos = { x: options.env.bounds.x, y: options.env.bounds.y }
-    this.groundY =
-      options.env.workArea.y + options.env.workArea.height - options.env.windowSize.height
     this.targetX = this.pos.x
     this.nextWanderAt = performance.now() + randBetween(5000, 10000)
     this.nextBlinkAt = performance.now() + randBetween(2500, 6000)
@@ -109,7 +104,10 @@ export class PetEngine {
   }
 
   setConfig(_config: AppConfig): void {
-    this.nextWanderAt = performance.now() + randBetween(3000, 8000)
+    this.nextWanderAt = Math.max(
+      this.restUntil,
+      performance.now() + randBetween(3000, 8000)
+    )
   }
 
   setPack(_pack: PetPack): void {
@@ -125,16 +123,17 @@ export class PetEngine {
     const wasChatOpen = this.chatOpen
     this.env = env
     this.chatOpen = env.chatOpen
-    this.groundY = env.workArea.y + env.workArea.height - env.windowSize.height
     this.pos = { x: env.bounds.x, y: env.bounds.y }
-    if (this.state !== 'air' && this.state !== 'drag') {
-      this.pos.y = this.groundY
+    if (this.state !== 'drag') {
       this.state = this.state === 'walk' ? 'idle' : this.state
       this.targetX = this.pos.x
-      this.nextWanderAt = performance.now() + randBetween(4000, 9000)
+      this.nextWanderAt = Math.max(
+        this.restUntil,
+        performance.now() + randBetween(4000, 9000)
+      )
     }
     if (wasChatOpen && !env.chatOpen) {
-      this.nextWanderAt = performance.now() + randBetween(4000, 8000)
+      this.nextWanderAt = Math.max(this.nextWanderAt, this.restUntil)
     }
     this.pushPosition(true)
   }
@@ -145,7 +144,10 @@ export class PetEngine {
       // Do not wander out from under the user's pointer while they aim at it.
       if (this.state === 'walk') this.state = 'idle'
       this.targetX = this.pos.x
-      this.nextWanderAt = performance.now() + 9000
+      this.nextWanderAt = Math.max(
+        this.restUntil,
+        performance.now() + 9000
+      )
     }
     this.wasInside = info.inside
     const cfg = this.options.getConfig()
@@ -210,7 +212,10 @@ export class PetEngine {
       this.state = this.state === 'walk' || this.state === 'land' ? 'idle' : this.state
       this.nextWanderAt = Infinity
     } else {
-      this.nextWanderAt = performance.now() + randBetween(5000, 10000)
+      this.nextWanderAt = Math.max(
+        this.restUntil,
+        performance.now() + randBetween(5000, 10000)
+      )
     }
   }
 
@@ -300,15 +305,12 @@ export class PetEngine {
     this.dragging = true
     this.dragMoved = false
     this.state = 'drag'
-    this.vel = { x: 0, y: 0 }
-    this.dragVelocity = { x: 0, y: 0 }
     this.dragStart = {
       pointerX,
       pointerY,
       windowX: this.pos.x,
       windowY: this.pos.y
     }
-    this.dragLast = { x: pointerX, y: pointerY, at: performance.now() }
     this.options.api.pet.beginDrag()
   }
 
@@ -320,14 +322,10 @@ export class PetEngine {
       this.dragMoved = true
       this.playTrigger('drag-start')
     }
+    if (Math.abs(dx) > 4) this.facing = dx < 0 ? -1 : 1
     this.pos.x = this.dragStart.windowX + dx
     this.pos.y = this.dragStart.windowY + dy
     this.clampPosition()
-    const now = performance.now()
-    const elapsed = Math.max(0.008, (now - this.dragLast.at) / 1000)
-    this.dragVelocity.x = (pointerX - this.dragLast.x) / elapsed
-    this.dragVelocity.y = (pointerY - this.dragLast.y) / elapsed
-    this.dragLast = { x: pointerX, y: pointerY, at: now }
     this.pushPosition(true)
   }
 
@@ -336,22 +334,16 @@ export class PetEngine {
     this.dragging = false
     this.options.api.pet.endDrag()
     const moved = this.dragMoved
-    const vx = clamp(this.dragVelocity.x, -2400, 2400)
-    const vy = clamp(this.dragVelocity.y, -2400, 2400)
-    this.facing = vx < -60 ? -1 : vx > 60 ? 1 : this.facing
-    this.vel = { x: vx * 0.45, y: vy * 0.25 }
-    if (this.pos.y >= this.groundY - 1) {
-      this.pos.y = this.groundY
-      if (Math.abs(this.vel.x) > 80) {
-        this.state = 'air'
-        this.vel.y = -Math.min(600, Math.abs(this.vel.x) * 0.35)
-        this.pos.y = this.groundY - 1
-      } else {
-        this.vel = { x: 0, y: 0 }
-        this.land()
-      }
+    this.state = moved ? 'land' : 'idle'
+    if (moved) {
+      this.restUntil = performance.now() + DRAG_REST_MS
+      this.nextWanderAt = this.restUntil
+      this.land()
     } else {
-      this.state = 'air'
+      this.nextWanderAt = Math.max(
+        this.restUntil,
+        performance.now() + randBetween(4000, 9000)
+      )
     }
     this.pushPosition(true)
     return { moved }
@@ -374,7 +366,10 @@ export class PetEngine {
     this.state = 'idle'
     this.setMood('neutral', 0)
     this.options.hooks.onSleep(false)
-    this.nextWanderAt = performance.now() + randBetween(3000, 7000)
+    this.nextWanderAt = Math.max(
+      this.restUntil,
+      performance.now() + randBetween(3000, 7000)
+    )
   }
 
   private lookTowardCursor(): void {
@@ -438,25 +433,10 @@ export class PetEngine {
 
     if (this.state === 'land' && now > this.landUntil) {
       this.state = 'idle'
-      this.nextWanderAt = now + randBetween(4000, 12000)
+      this.nextWanderAt = Math.max(this.restUntil, now + randBetween(4000, 12000))
     }
 
-    if (this.state === 'air') {
-      this.vel.y += GRAVITY * dt
-      this.pos.x += this.vel.x * dt
-      this.pos.y += this.vel.y * dt
-      this.vel.x *= 0.995
-      if (this.pos.y >= this.groundY) {
-        this.pos.y = this.groundY
-        if (this.vel.y > 420) {
-          this.vel.y = -this.vel.y * 0.32
-          this.pos.y = this.groundY - 1
-        } else {
-          this.vel = { x: 0, y: 0 }
-          this.land()
-        }
-      }
-    } else if (this.state === 'walk') {
+    if (this.state === 'walk') {
       const dx = this.targetX - this.pos.x
       if (Math.abs(dx) < 3) {
         this.pos.x = this.targetX
@@ -466,10 +446,7 @@ export class PetEngine {
         const speed = cfg.pet.roamSpeed
         this.facing = dx < 0 ? -1 : 1
         this.pos.x += Math.sign(dx) * Math.min(speed * dt, Math.abs(dx))
-        this.pos.y = this.groundY
       }
-    } else if (this.state !== 'sleep') {
-      this.pos.y = this.groundY
     }
 
     if (
@@ -559,14 +536,8 @@ export class PetEngine {
         sx = 1 + step * 0.01
         break
       }
-      case 'air': {
-        rot = clamp(this.vel.x * 0.012, -14, 14)
-        sy = 1.045
-        sx = 0.972
-        break
-      }
       case 'drag': {
-        rot = clamp(this.dragVelocity.x * 0.012, -16, 16)
+        rot = this.facing * -2
         sy = 1.06
         sx = 0.95
         break

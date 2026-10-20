@@ -52,7 +52,7 @@ export const PET_TRIGGERS: { value: PetTrigger; label: string }[] = [
   { value: 'typing', label: '你打字时' },
   { value: 'key-enter', label: '按回车' },
   { value: 'key-escape', label: '按 Esc' },
-  { value: 'save-hotkey', label: '按 Ctrl/Cmd + S' },
+  { value: 'save-hotkey', label: '按 Ctrl + S' },
   { value: 'wheel', label: '滚动滚轮' },
   { value: 'mouse-near', label: '鼠标靠近' },
   { value: 'idle', label: '你离开电脑' },
@@ -441,7 +441,6 @@ export interface DeskPetApi {
   system: {
     inputStatus(): Promise<InputStatus>
     restartInput(): Promise<InputStatus>
-    requestAccessibility(): Promise<boolean>
     hotkeyStatus(): Promise<HotkeyStatus>
     autostart: {
       get(): Promise<boolean>

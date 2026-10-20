@@ -312,52 +312,6 @@ button {
   }
 }
 
-/* ----------------------------------------------------------------- controls */
-
-.controls {
-  position: absolute;
-  right: 6px;
-  bottom: 120px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(6px);
-  transition:
-    opacity 0.16s ease,
-    transform 0.16s ease;
-  z-index: 6;
-}
-
-#stage.hovering .controls {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-}
-
-.controls button {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  background: rgba(255, 251, 245, 0.9);
-  color: #4a3a35;
-  font-size: 15px;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(60, 40, 30, 0.18);
-  transition:
-    transform 0.12s ease,
-    background 0.12s ease;
-}
-
-.controls button:hover {
-  background: #fff;
-  transform: scale(1.08);
-}
-
 /* ------------------------------------------------------------------- chat */
 
 .chat {

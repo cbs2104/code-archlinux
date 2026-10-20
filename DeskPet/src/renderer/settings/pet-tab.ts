@@ -234,7 +234,7 @@ export class PetTab implements TabView {
           label: '显示在所有桌面 / 全屏应用之上',
           checked: cfg.pet.showOnAllWorkspaces,
           onChange: (value) => void this.ctx.state.patch({ pet: { showOnAllWorkspaces: value } }),
-          hint: 'macOS / Linux 生效；关闭后切换工作区时桌宠会留在原来的桌面。'
+          hint: 'Linux 生效；关闭后切换工作区时桌宠会留在原来的桌面。'
         }),
         toggle({
           label: '透明区域可以点穿',

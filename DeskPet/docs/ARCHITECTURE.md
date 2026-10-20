@@ -57,10 +57,10 @@ DeskPet 由三个进程/上下文组成：Electron 主进程、preload 桥、两
 
 窗口固定为透明、无边框、不可调整大小（`PetWindow`）：
 
-- **移动**：渲染进程引擎每帧计算窗口左上角并调用 `pet:move-to`（节流 30fps），主进程按目标显示器工作区夹取。
-- **点击穿透**：主进程每 40ms 读取一次 `screen.getCursorScreenPoint()`，与渲染进程上报的 hitbox（CSS px，相对窗口）比较；只有光标在桌宠/悬浮按钮/气泡上时才 `setIgnoreMouseEvents(false)`。这比依赖 `forward: true` 的 mousemove 更可靠，在 Linux 也可用。
-- **拖拽**：渲染进程 `pointerdown` 后捕获指针，`pointermove` 的 `screenX/screenY` 驱动窗口位置；主进程在拖拽期间保持可交互。
-- **聊天面板**：渲染进程请求 `pet:set-chat-open(true)`，主进程把窗口从 `360×380` 扩到 `420×660`（底部/水平中心锚定、夹取到工作区），关闭时缩回。窗口尺寸变化会广播 `pet:env`。
+- **移动**：渲染进程引擎每帧计算窗口左上角并调用 `pet:move-to`（节流 30fps），主进程按目标显示器工作区夹取；支持二维自由位置，不再有重力落回底部。
+- **点击穿透**：默认关闭，整个窗口接收鼠标。开启后主进程每 40ms 读取一次 `screen.getCursorScreenPoint()`，与渲染进程上报的 hitbox（CSS px，相对窗口）比较；只有光标在桌宠/悬浮按钮/气泡上时才 `setIgnoreMouseEvents(false)`。
+- **拖拽**：渲染进程 `pointerdown` 后捕获指针，`pointermove` 的 `screenX/screenY` 驱动窗口位置；松手后停在当前位置，主进程在拖拽期间保持可交互。
+- **聊天面板**：渲染进程请求 `pet:set-chat-open(true)`，主进程把窗口从 `360×380` 扩到 `420×660`（底部/水平中心锚定、夹取到工作区），关闭时缩回。窗口尺寸变化会广播 `pet:env`，不会重置自由位置。
 - **视觉**：窗口自身透明；SVG/自定义图片完全由 CSS 绘制。聊天面板与气泡都在同一个渲染进程里。
 
 ### 输入监听
@@ -70,7 +70,7 @@ DeskPet 由三个进程/上下文组成：Electron 主进程、preload 桥、两
 - 可选依赖，加载失败不会让应用崩溃；设置页显示错误。
 - 监听 `keydown` / `click` / `wheel`；不监听 `mousemove`（改用主进程轮询光标，避免高频 IPC）。
 - 按键分类：
-  - `Ctrl/Cmd + S` → `save`
+  - `Ctrl + S` → `save`
   - Enter → `enter`，Esc → `escape`
   - 其他非控制/导航/功能键 → 按 450ms 节流发送 `typing` 事件（带计数）
 - `powerMonitor.getSystemIdleTime()` 每 10s 检查一次，到达阈值发送 `idle`，恢复活动发送 `wake`。
@@ -100,9 +100,9 @@ DeskPet 由三个进程/上下文组成：Electron 主进程、preload 桥、两
 
 ### 桌宠（`src/renderer/pet`）
 
-- `PetEngine`：状态机 `idle | walk | air | drag | land | sleep`。
-  - 物理：重力 2400 px/s²、落地弹跳、水平摩擦；
-  - 漫游：空闲随机目标 + 速度；
+- `PetEngine`：状态机 `idle | walk | drag | land | sleep`。
+  - 位置：二维自由坐标；拖动结束后停在原地，没有重力/落地回弹；
+  - 漫游：空闲随机水平目标 + 速度，保持当前高度；
   - 动作：动画曲线叠加 + 序列帧播放；
   - 表情：内置 SVG 的嘴型、眨眼、瞳孔偏移；
   - 鼠标靠近 / 屏幕输入触发的动作。

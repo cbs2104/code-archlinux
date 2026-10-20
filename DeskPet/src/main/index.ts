@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  Menu,
   net,
   powerMonitor,
   protocol,
@@ -22,7 +23,7 @@ import { log } from './logger'
 import { petsDir } from './paths'
 import { PetStore } from './pet-store'
 import { PetWindow } from './pet-window'
-import { applyPlatformStartup, getAutostart, installApplicationMenu, setAutostart } from './platform'
+import { getAutostart, setAutostart } from './platform'
 import { SettingsWindow } from './settings-window'
 import { TrayMenu } from './tray'
 
@@ -50,7 +51,6 @@ const ASSET_MIME: Record<string, string> = {
  * platform selection, so relaunch the app once with the real CLI flag.
  */
 function needsX11Relaunch(): boolean {
-  if (process.platform !== 'linux') return false
   if (!process.env.DISPLAY) return false
   if (process.env.DESKPET_OZONE_PLATFORM === 'wayland') return false
   if (!(process.env.XDG_SESSION_TYPE === 'wayland' || process.env.WAYLAND_DISPLAY)) return false
@@ -78,9 +78,7 @@ if (needsX11Relaunch()) {
   }
 }
 
-if (process.platform === 'linux') {
-  app.commandLine.appendSwitch('enable-transparent-visuals')
-}
+app.commandLine.appendSwitch('enable-transparent-visuals')
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
@@ -252,7 +250,7 @@ function setupPowerListeners(): void {
 
 async function bootstrap(): Promise<void> {
   log.init()
-  applyPlatformStartup()
+  Menu.setApplicationMenu(null)
 
   store = new ConfigStore()
   config = store.load()
@@ -323,13 +321,6 @@ async function bootstrap(): Promise<void> {
     }
   })
 
-  installApplicationMenu({
-    openSettings: () => openSettings(),
-    openChat,
-    togglePet,
-    quit
-  })
-
   setupDisplayListeners()
   setupPowerListeners()
   applyConfig(config)
@@ -348,7 +339,7 @@ async function bootstrap(): Promise<void> {
 
   log.info('DeskPet ready', {
     version: app.getVersion(),
-    platform: process.platform,
+    platform: 'linux',
     electron: process.versions.electron,
     activePet: config.activePetId,
     userData: app.getPath('userData'),

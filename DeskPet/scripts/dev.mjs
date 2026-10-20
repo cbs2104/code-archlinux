@@ -16,7 +16,6 @@ const cli = resolve(dirname(pkgPath), bin)
 
 const env = { ...process.env }
 const isWayland =
-  process.platform === 'linux' &&
   Boolean(env.DISPLAY) &&
   (env.XDG_SESSION_TYPE === 'wayland' || Boolean(env.WAYLAND_DISPLAY)) &&
   env.DESKPET_OZONE_PLATFORM !== 'wayland'
@@ -40,8 +39,7 @@ const child = spawn(process.execPath, args, {
   env
 })
 
-const signals =
-  process.platform === 'win32' ? ['SIGINT', 'SIGTERM'] : ['SIGINT', 'SIGTERM', 'SIGHUP']
+const signals = ['SIGINT', 'SIGTERM', 'SIGHUP']
 for (const signal of signals) {
   process.on(signal, () => {
     if (!child.killed) child.kill(signal)

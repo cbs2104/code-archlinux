@@ -2,9 +2,11 @@
 
 # DeskPet · 桌面小搭档
 
-一个用 **Electron + TypeScript** 写的跨平台桌宠：把任意图片里的角色抠出来放到桌面上，让它对键盘、鼠标、AI 回复做出反应，支持自定义序列帧动作、音效、系统语音，并可在 Windows / Linux（含 Arch）/ macOS 上打包运行。
+一个用 **Electron + TypeScript** 写的 **Linux 桌宠**：把任意图片里的角色抠出来放到桌面上，让它对键盘、鼠标、AI 回复做出反应，支持自定义序列帧动作、音效、系统语音，并通过 AppImage / deb / rpm / pacman 运行在 Linux 上。
 
-> 不是玩具 demo：包含完整的抠图工坊、动作编辑器、全局输入监听、AI 流式对话、语音合成/识别、托盘、单实例、配置持久化、跨平台打包配置与 GitHub Actions。
+> 不是玩具 demo：包含完整的抠图工坊、动作编辑器、全局输入监听、AI 流式对话、语音合成/识别、托盘、单实例、配置持久化、Linux 打包配置与 GitHub Actions。
+>
+> **平台范围**：只维护 Linux（X11 / XWayland）；Windows / macOS 的构建目标、平台分支和文档已移除。
 >
 > **GitHub 提示**：把 `DeskPet/` 作为仓库根目录（或把其中的 `.github/` 移到仓库根）推送到 GitHub，即可使用内置 Actions。若仓库地址/名称不同，请同步替换 `package.json` 的 `homepage`、README 与「关于」页里的 `https://github.com/DeskPet/DeskPet`。
 
@@ -22,7 +24,7 @@
 - [打包](#打包)
 - [项目结构](#项目结构)
 - [数据与隐私](#数据与隐私)
-- [平台差异与已知限制](#平台差异与已知限制)
+- [Linux 平台说明与已知限制](#linux-平台说明与已知限制)
 - [常见问题](#常见问题)
 - [贡献与许可](#贡献与许可)
 
@@ -42,18 +44,18 @@
 
 ### 桌面行为
 
-- 透明、无边框、置顶窗口；点击透明区域会穿透到桌面（按窗口内实际像素区域做命中测试）。
-- 可以拖动、抛掷、落地弹跳；会在屏幕上自己溜达、落地、被拎起来。
+- 透明、无边框、置顶窗口；默认整个窗口接收鼠标，可在设置里开启「透明区域可以点穿」。
+- **可以拖动到桌面任意位置并停在那里**，松手后 60 秒内不会自动溜达；如果开启自动溜达，会在当前高度水平走动。
 - 待机一段时间会睡觉，键盘/鼠标一动就醒。
 - 智能体始终在屏幕内，跑丢了可从托盘或设置里「回到右下角」。
 - 系统托盘：显示/隐藏、打招呼、聊天、设置、重置位置、开机自启、退出。
-- 单实例、记住位置、开机自启（Windows/macOS 登录项，Linux 写入 `~/.config/autostart`）。
+- 单实例、记住位置、开机自启（写入 `~/.config/autostart/deskpet.desktop`）。
 
 ### 键盘 / 鼠标联动
 
 通过 [`uiohook-napi`](https://github.com/SnodsMe/uiohook-napi)（N-API 预编译，无需 electron-rebuild）读取**全局**输入事件类型：
 
-- 打字、回车、Esc、Ctrl/Cmd+S、鼠标点击、滚轮；
+- 打字、回车、Esc、Ctrl+S、鼠标点击、滚轮；
 - 鼠标靠近打招呼、眼睛跟随鼠标；
 - 每个事件都可以在「动作与声音」里绑定任意动作；
 - 只统计事件类型和数量，**不记录输入内容**（隐私友好）。
@@ -87,8 +89,8 @@
 - Electron 44 + Vite 7 + electron-vite 6 + 严格 TypeScript。
 - 主进程 / preload / 渲染进程分离，`contextIsolation: true`、`nodeIntegration: false`，所有 IPC 校验来源。
 - 自定义 `deskpet://` 协议安全提供桌宠资源，路径穿越防护。
-- 跨平台 `electron-builder` 配置：Windows NSIS/便携版、macOS dmg/zip、Linux AppImage/deb/rpm/**pacman**（Arch）。
-- GitHub Actions 自动类型检查、构建和三平台打包。
+- Linux `electron-builder` 配置：AppImage / deb / rpm / **pacman**（Arch）。
+- GitHub Actions 自动类型检查、构建和 Linux 打包。
 
 ---
 
@@ -96,7 +98,7 @@
 
 | 位置 | 说明 |
 | --- | --- |
-| 桌面 | 透明桌宠 + 气泡对话 + 悬浮按钮（聊天 / 设置 / 隐藏） |
+| 桌面 | 透明桌宠 + 气泡对话 + 右键功能菜单 |
 | 聊天面板 | 桌宠窗口向上展开，深色玻璃面板、流式回复、语音输入 |
 | 设置窗口 | 侧边栏 7 个页面：我的桌宠 / 抠图工坊 / 动作与声音 / 语音 / 互动与快捷键 / AI 伙伴 / 关于 |
 | 托盘菜单 | 显示隐藏、聊天、打招呼、设置、回右下角、开机自启、退出 |
@@ -111,9 +113,8 @@
 
 - Node.js **20.19+**（推荐 22 或 24 LTS）
 - npm 10+（项目包含 `package-lock.json`，CI 使用 `npm ci`）
-- Linux：X11 或带 XWayland 的 Wayland 桌面；建议安装 `libxtst`、`speech-dispatcher`（TTS）
-- macOS：首次使用键盘监听需要在「系统设置 → 隐私与安全性 → 辅助功能」中允许 DeskPet
-- Windows：无额外依赖
+- **Linux**（Arch / Debian / Fedora 等），X11 或带 XWayland 的 Wayland 桌面
+- 建议安装 `libxtst`（全局输入）与 `speech-dispatcher`（TTS）
 
 ### 开发运行
 
@@ -127,7 +128,7 @@ npm run dev -- --settings
 
 `npm run dev` 会启动 Vite + Electron 并打开桌宠窗口；**首次启动（没有 `config.json`）会自动打开设置窗口**。
 
-> 如果你的 npm 版本默认阻止安装脚本，导致 Electron 可执行文件没有下载，可以运行 `npx electron --version` 触发下载，或执行 `npm rebuild electron`。`uiohook-napi` 自带各平台预编译 N-API 二进制，不需要 `electron-rebuild`。
+> 如果你的 npm 版本默认阻止安装脚本，导致 Electron 可执行文件没有下载，可以运行 `npx electron --version` 触发下载，或执行 `npm rebuild electron`。`uiohook-napi` 自带 Linux 预编译 N-API 二进制，不需要 `electron-rebuild`。
 >
 > **GNOME / Wayland 用户**：请使用 `npm run dev`（内置启动器会把 `--ozone-platform=x11` 作为真实命令行参数传给 Electron）。如果直接运行 `electron .` 或 AppImage，程序会自动用 XWayland 重新启动一次。详见[常见问题](#看不到桌宠或设置窗口)。
 
@@ -207,9 +208,9 @@ npm start           # 预览生产构建
 
 - **左键单击**：打招呼（默认动作）。
 - **双击**：转圈抗议。
-- **拖动**：拎起来、甩到屏幕另一边，松手会落地；快速甩出还会被弹一下。
+- **拖动**：拎起来放到桌面任意位置，松手后停在原地（60 秒内不自动溜达）；位置会保存，重启后保留。
 - **右键**：菜单（聊天 / 打招呼 / 设置 / 换个位置 / 隐藏 / 退出）。
-- **悬停**：右侧出现 💬 聊天、⚙ 设置、✕ 隐藏按钮。
+- **右键**：在桌宠或透明区域右键，打开功能菜单（聊天 / 打招呼 / 设置 / 换位置 / 隐藏 / 退出）；不再显示右侧悬浮按钮。
 - **托盘**：显示/隐藏、打招呼、聊天、设置、回右下角、开机自启、退出。
 - **聊天面板**：桌宠窗口向上展开；Enter 发送、Shift+Enter 换行、Esc 收起；发送中按钮变成停止。
 - 输入框右侧的 🎤 需要先在 AI 设置里启用语音识别。
@@ -220,8 +221,8 @@ npm start           # 预览生产构建
 
 | 快捷键 | 功能 |
 | --- | --- |
-| `Ctrl/Cmd + Alt + Shift + P` | 显示 / 隐藏桌宠 |
-| `Ctrl/Cmd + Alt + Shift + K` | 打开聊天 |
+| `Ctrl + Alt + Shift + P` | 显示 / 隐藏桌宠 |
+| `Ctrl + Alt + Shift + K` | 打开聊天 |
 | 双击桌宠 | 双击动作 |
 | 右键桌宠 | 右键菜单 |
 | `Esc`（聊天中） | 收起聊天 |
@@ -240,7 +241,7 @@ npm start           # 预览生产构建
    - **API Key**：本地模型可留空。
    - **模型名称**。
 3. 点「测试连接」验证。
-4. 点「打开对话」或桌宠的 💬 按钮聊天。
+4. 右键桌宠 →「和我聊天」。
 
 内置预设：
 
@@ -281,13 +282,13 @@ ollama pull qwen2.5:7b
 两种“说话”方式可以同时使用：
 
 1. **系统 TTS**（设置 → 语音）
-   - 选择系统音色；Windows/macOS 自带语音，Linux 需要 `speech-dispatcher` 或 `espeak-ng`。
+   - 选择系统音色；需要 `speech-dispatcher` 或 `espeak-ng`。
    - 控制语速、音调、音量，以及是否朗读 AI 回复 / 动作台词。
    - 「试听」使用当前设置朗读输入框文本。
 2. **动作音效 / 自定义配音**（设置 → 动作与声音）
    - 为每个动作选择音频文件，例如录好的角色语音、8-bit 音效。
    - 音量由「语音 → 动作音效音量」控制。
-   - 这比系统 TTS 更接近角色配音，且跨平台一致。
+   - 这比系统 TTS 更接近角色配音。
 
 > 音频会复制进桌宠包，因此导出分享时一起带走。支持 MP3 / WAV / OGG / M4A / AAC / FLAC / WebM，单文件上限 20MB。
 
@@ -304,31 +305,29 @@ ollama pull qwen2.5:7b
 | 滚轮 | 晃动 |
 | 回车 | 点头 |
 | Esc | 摇头 + 「要逃跑吗？」 |
-| Ctrl/Cmd + S | 蹦跳 + 「保存好啦！」 |
+| Ctrl + S | 蹦跳 + 「保存好啦！」 |
 | 鼠标靠近 | 挥手打招呼 |
 | 离开电脑 N 分钟 | 睡觉（Zzz），任意输入唤醒 |
 | AI 回复 | 开心蹦跳 + 情绪表情 |
 
 - 可在动作编辑器里改触发条件、台词、音效、动画，或直接禁用。
-- 鼠标位置由主进程轮询系统光标（跨平台，无需原生模块），用于眼睛跟随和「靠近」检测。
+- 鼠标位置由主进程轮询系统光标（Linux/X11），用于眼睛跟随和「靠近」检测。
 - 键盘事件只读取按键类别（字母/数字/回车/Esc/S 等），不会拼出你输入的文字。
-- 关闭「启用键盘 / 鼠标联动」后，待机睡眠与鼠标跟随也会停止；透明区域点击穿透仍然有效。
+- 关闭「启用键盘 / 鼠标联动」后，待机睡眠与鼠标跟随也会停止。
 
-各平台限制见 [docs/PLATFORM.md](docs/PLATFORM.md)。
+Linux 平台限制见 [docs/PLATFORM.md](docs/PLATFORM.md)。
 
 ---
 
 ## 打包
 
-打包使用 [electron-builder](https://www.electron.build/)。图标由 `build/icon.svg` 生成（`build/icon.png`、`build/icon.ico` 已提交）。
+打包使用 [electron-builder](https://www.electron.build/)。图标由 `build/icon.svg` 生成（`build/icon.png` 已提交）。
 
 ### 本地打包
 
 ```bash
 npm run pack:dir     # 只生成未压缩目录，用于检查
-npm run dist         # 当前平台全部目标
-npm run dist:win     # Windows：NSIS 安装包 + 便携版
-npm run dist:mac     # macOS：dmg + zip（需在 macOS 上执行）
+npm run dist         # Linux 全部目标
 npm run dist:linux   # Linux：AppImage + deb + rpm + pacman
 npm run dist:linux:appimage  # 只构建 AppImage（Arch 上最省事）
 npm run dist:linux:pacman    # 只构建 pacman 包
@@ -336,13 +335,13 @@ npm run dist:linux:pacman    # 只构建 pacman 包
 
 产物输出到 `release/`：
 
-| 平台 | 目标 | 说明 |
-| --- | --- | --- |
-| Windows | NSIS（x64/arm64）、portable（x64） | 安装时可选择目录，创建开始菜单/桌面快捷方式 |
-| macOS | dmg、zip（x64/arm64） | 未签名构建需在「隐私与安全性」里手动允许 |
-| Linux | AppImage（x64/arm64）、deb、rpm、**pacman**（x64） | Arch 可直接用 pacman 包；也可用 AppImage 免安装 |
+| 目标 | 说明 |
+| --- | --- |
+| AppImage（x64） | 免安装，直接运行 |
+| deb / rpm（x64） | Debian / Fedora 系安装包 |
+| **pacman**（x64） | Arch Linux 原生包 |
 
-> Windows/macOS 安装包建议在对应系统上构建（或使用仓库里的 GitHub Actions）。macOS 的 dmg 和签名/公证只能在 macOS 上完成。Linux 构建 AppImage 需要 `fakeroot`、`libarchive-tools` 等；pacman/deb/rpm 目标使用 electron-builder 的 fpm，Arch 上构建 pacman 包需要额外安装 **`libxcrypt-compat`**（fpm 自带的 Ruby 依赖 `libcrypt.so.1`），否则请使用 `npm run dist:linux:appimage`。
+> AppImage 需要 `fakeroot`、`libarchive-tools` 等；pacman/deb/rpm 目标使用 electron-builder 的 fpm，Arch 上构建 pacman 包需要额外安装 **`libxcrypt-compat`**（fpm 自带的 Ruby 依赖 `libcrypt.so.1`），否则请使用 `npm run dist:linux:appimage`。
 
 ### 重新生成图标
 
@@ -350,12 +349,12 @@ npm run dist:linux:pacman    # 只构建 pacman 包
 npm run icons
 ```
 
-需要 `rsvg-convert`（librsvg）或 ImageMagick；macOS 会额外用 `iconutil` 生成 `icon.icns`。
+需要 `rsvg-convert`（librsvg）或 ImageMagick；只生成 Linux 使用的 `build/icon.png`。
 
 ### GitHub Actions
 
-- `.github/workflows/build.yml`：每次 push/PR 执行类型检查 + 构建；在 Ubuntu/Windows/macOS 三平台打包并上传 artifact。
-- `.github/workflows/release.yml`：推送 `v*` tag 时构建三平台产物并创建 GitHub Release。
+- `.github/workflows/build.yml`：每次 push/PR 执行类型检查 + 构建；在 Ubuntu 上打包并上传 artifact。
+- `.github/workflows/release.yml`：推送 `v*` tag 时构建 Linux 产物并创建 GitHub Release。
 
 工作流使用 `npm ci`，因此请提交 `package-lock.json`。
 
@@ -371,11 +370,11 @@ DeskPet/
 │   ├── ISSUE_TEMPLATE/*.yml
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── build/
-│   ├── icon.svg / icon.png / icon.ico
+│   ├── icon.svg / icon.png
 ├── docs/
 │   ├── ARCHITECTURE.md              # 进程模型 / IPC / 数据流
 │   ├── PET_PACK.md                  # 桌宠包格式（可分享）
-│   ├── PLATFORM.md                  # Windows / Linux / macOS 差异
+│   ├── PLATFORM.md                  # Linux 平台说明
 │   └── assets/banner.svg
 ├── scripts/
 │   ├── dev.mjs                      # 启动器：Wayland 下传入 --ozone-platform=x11
@@ -430,8 +429,6 @@ DeskPet/
 | 系统 | 路径 |
 | --- | --- |
 | Linux | `~/.config/DeskPet/` |
-| Windows | `%APPDATA%\DeskPet\` |
-| macOS | `~/Library/Application Support/DeskPet/` |
 
 内容：
 
@@ -448,7 +445,7 @@ DeskPet/
 隐私：
 
 - 除主动使用 AI / 语音识别外，所有数据都在本机。
-- 全局键盘监听只统计事件类别（打字节流计数、回车、Esc、Ctrl/Cmd+S），**不保存具体按键内容**。
+- 全局键盘监听只统计事件类别（打字节流计数、回车、Esc、Ctrl+S），**不保存具体按键内容**。
 - API Key 仅在主进程内使用；系统支持 `safeStorage` 时会加密落盘。若系统不支持（部分 Linux 环境），会以明文保存在仅当前用户可读的配置文件中。
 - 录音只在你按下 🎤 后开始，发送给配置的识别接口后即丢弃。
 
@@ -460,25 +457,24 @@ DeskPet/
 
 ---
 
-## 平台差异与已知限制
+## Linux 平台说明与已知限制
 
-| 能力 | Windows | macOS | Linux (X11 / XWayland) | Linux (原生 Wayland) |
-| --- | --- | --- | --- | --- |
-| 透明/无边框窗口 | ✅ | ✅ | ✅（需要合成器） | ⚠️ 取决于合成器 |
-| 窗口程序化移动 / 抛掷 | ✅ | ✅ | ✅ | ❌ 协议禁止应用自定位 |
-| 置顶 | ✅ | ✅ | ✅ | ⚠️ 由合成器决定 |
-| 所有工作区可见 | —（无跨桌面 API） | ✅ | ✅ | ⚠️ 由合成器决定 |
-| 全局键盘/鼠标事件 | ✅ | ✅（需辅助功能权限） | ✅（需 libXtst） | ⚠️ 只能看到 XWayland 应用 |
-| 全局快捷键 | ✅ | ✅ | ✅ | ⚠️ 通常不可用 |
-| 系统 TTS | ✅ | ✅ | ✅（需 speech-dispatcher） | 同左 |
-| 麦克风录音 | ✅ | ✅（需授权） | ✅ | ✅ |
+| 能力 | Linux X11 / XWayland | 原生 Wayland |
+| --- | --- | --- |
+| 透明/无边框窗口 | ✅（需要合成器） | ⚠️ 取决于合成器 |
+| 窗口程序化移动 / 自由拖放 | ✅ | ❌ 协议禁止应用自定位 |
+| 置顶 | ✅ | ⚠️ 由合成器决定 |
+| 所有工作区可见 | ✅ | ⚠️ 由合成器决定 |
+| 全局键盘/鼠标事件 | ✅（需 libXtst） | ⚠️ 只能看到 XWayland 应用 |
+| 全局快捷键 | ✅ | ⚠️ 通常不可用 |
+| 系统 TTS | ✅（需 speech-dispatcher） | 同左 |
+| 麦克风录音 | ✅ | ✅ |
 
-**Wayland 会话下应用默认使用 XWayland**：启动器/桌面入口传入 `--ozone-platform=x11`；直接运行 `electron .` 或 AppImage 时主进程会自动带该参数重启一次。`app.commandLine.appendSwitch()` 在 Chromium 初始化后执行，不能用来选择 Ozone 平台。XWayland 是桌宠自由移动、透明、置顶和全局快捷键能够工作的前提；如需原生 Wayland，设置 `DESKPET_OZONE_PLATFORM=wayland`，但拖拽/漫游/精确定位会失效。
+**Wayland 会话下应用默认使用 XWayland**：启动器/桌面入口传入 `--ozone-platform=x11`；直接运行 `electron .` 或 AppImage 时主进程会自动带该参数重启一次。`app.commandLine.appendSwitch()` 在 Chromium 初始化后执行，不能用来选择 Ozone 平台。XWayland 是桌宠自由移动、透明、置顶和全局快捷键能够工作的前提；如需原生 Wayland，设置 `DESKPET_OZONE_PLATFORM=wayland`，但拖拽/自由定位会失效。
 
 已知限制：
 
 - 原生 Wayland 下无法程序化移动窗口，也无法可靠监听原生 Wayland 应用的键盘；这不是 DeskPet 能绕过的协议限制。
-- macOS 未签名的 dmg 首次打开需要右键 →「打开」或在系统设置中允许；辅助功能权限在应用更新后可能需要重新勾选。
 - 全局快捷键如果被其他软件占用会注册失败，设置页会显示 ✗，换一个组合即可。
 - 内置桌宠的图形不能替换；请用抠图工坊创建自定义桌宠。
 - 单个桌宠包没有做压缩归档；导出是一个文件夹。分享时可以自行 zip。
@@ -496,7 +492,7 @@ DeskPet/
 - `npm run dev` 的启动器会自动传 `--ozone-platform=x11`；
 - 直接运行 `electron .` 或 AppImage 时，主进程会自动用 XWayland 重启一次（会有一瞬间的闪烁）；
 - 再次启动 DeskPet 会打开设置窗口；首次启动（没有 `config.json`）也会自动打开设置；
-- GNOME 需要 AppIndicator 扩展来显示托盘，若没有托盘，请用桌宠悬停后的 ⚙ 按钮或 `--settings` 参数；
+- GNOME 需要 AppIndicator 扩展来显示托盘，若没有托盘，请右键桌宠 →「设置…」或使用 `--settings` 参数；
 - 仍未出现时，在终端运行 `npm run dev` 并查看 `~/.config/DeskPet/deskpet.log`，确认日志里有 `Pet window shown`。
 
 **桌宠看得见，但点它没反应？**
@@ -519,12 +515,10 @@ DeskPet/
 Linux 需要开启桌面合成（KWin、Mutter 等默认开启）；Wayland 原生模式尤其受限。可设置 `DESKPET_OZONE_PLATFORM=x11` 或登录 X11 会话。
 
 **键盘反应无效？**
-- Linux：确认使用 X11/XWayland，安装 `libxtst`；Wayland 原生应用不会被捕获。
-- macOS：系统设置 → 隐私与安全性 → 辅助功能，勾选 DeskPet（或 Electron 开发版）。
-- Windows：uiohook 一般无需权限；若被杀毒软件拦截，请放行。
+- 确认使用 X11/XWayland，安装 `libxtst`；原生 Wayland 应用不会被捕获。
 
 **设置了快捷键但用不了？**
-Wayland 下 `globalShortcut` 基本不可用；X11/Windows/macOS 下如果组合被占用，设置页会标记注册失败。
+如果组合被其他软件占用，设置页会标记注册失败；换一个组合即可。DeskPet 默认通过 XWayland 运行，`globalShortcut` 可用。
 
 **没有声音 / 没有可选音色？**
 Linux 安装 `speech-dispatcher`（或 `espeak-ng`），重启 DeskPet；也可以在动作里绑定自己的音频文件。
@@ -566,8 +560,9 @@ Linux 安装 `speech-dispatcher`（或 `espeak-ng`），重启 DeskPet；也可�
 - 修复并验证 Linux/GNOME 多工作区置顶：`setVisibleOnAllWorkspaces(true)` 在 XWayland 下把桌宠变成 `_NET_WM_STATE_STICKY` / `_NET_WM_DESKTOP=-1`；窗口显示后重新 `setAlwaysOnTop` + `moveTop`，打开设置窗口后桌宠仍在最上层。
 - 修复并验证设置页 toggle：`elementFromPoint` 命中 `INPUT`，点击后配置中的 `showOnAllWorkspaces` / `clickThrough` 能正确切换。
 - 修复点击交互：点击穿透默认关闭；指针位于桌宠上时暂停溜达。实测窗口 input shape 为完整 `720×760`，直接点击/拖动可用。
-
-Windows / macOS 的打包配置、图标、权限说明和 GitHub Actions 矩阵已经就绪，但当前环境无法实际运行这两个系统；请在对应系统上执行 `npm run dist:win` / `npm run dist:mac` 验证签名与安装体验。
+- 自由定位：拖动可把窗口放到屏幕任意位置，松手后不再落回底部；位置会保存到配置，重启后保留。
+- 桌宠右侧悬浮按钮已移除，只保留右键功能菜单；右键桌宠或透明区域即可打开聊天 / 设置 / 隐藏等。
+- Linux-only：移除 Windows/macOS 构建目标与平台分支，CI 只构建 Linux 产物。
 
 ---
 

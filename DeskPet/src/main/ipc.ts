@@ -494,7 +494,6 @@ export function registerIpc(ctx: IpcContext): void {
 
   handle('system:input-status', () => ctx.input.status())
   handle('system:restart-input', () => ctx.input.restart())
-  handle('system:request-accessibility', () => ctx.input.promptAccessibility())
   handle('system:hotkey-status', () => ctx.hotkeys.get())
 
   handle('system:get-autostart', () => getAutostart())
@@ -519,7 +518,7 @@ export function registerIpc(ctx: IpcContext): void {
     electron: process.versions.electron ?? '',
     chrome: process.versions.chrome ?? '',
     node: process.versions.node ?? '',
-    platform: process.platform,
+    platform: 'linux',
     arch: process.arch,
     userData: userDataDir(),
     petsDir: petsDir(),

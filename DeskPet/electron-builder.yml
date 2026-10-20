@@ -21,72 +21,16 @@ asarUnpack:
   - "**/*.node"
   - "**/node_modules/uiohook-napi/**"
 
-# ---------------------------------------------------------------- Windows
-win:
-  icon: build/icon.ico
-  artifactName: ${productName}-${version}-${arch}.${ext}
-  target:
-    - target: nsis
-      arch:
-        - x64
-        - arm64
-    - target: portable
-      arch:
-        - x64
-
-nsis:
-  oneClick: false
-  perMachine: false
-  allowElevation: true
-  allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
-  createStartMenuShortcut: true
-  shortcutName: DeskPet
-  deleteAppDataOnUninstall: false
-
-portable:
-  artifactName: ${productName}-${version}-portable.${ext}
-
-# ---------------------------------------------------------------- macOS
-mac:
-  icon: build/icon.png
-  category: public.app-category.entertainment
-  artifactName: ${productName}-${version}-${arch}.${ext}
-  target:
-    - target: dmg
-      arch:
-        - x64
-        - arm64
-    - target: zip
-      arch:
-        - x64
-        - arm64
-  extendInfo:
-    NSHighResolutionCapable: true
-    NSMicrophoneUsageDescription: DeskPet uses the microphone only when you press the voice-input button.
-    NSAccessibilityUsageDescription: DeskPet can react to keyboard and mouse activity. You can disable this in Settings.
-  darkModeSupport: true
-
-dmg:
-  artifactName: ${productName}-${version}-${arch}.${ext}
-  contents:
-    - x: 130
-      y: 220
-    - x: 410
-      y: 220
-      type: link
-      path: /Applications
-
 # ---------------------------------------------------------------- Linux
 linux:
   icon: build/icon.png
   category: Utility
   maintainer: DeskPet Contributors <deskpet@users.noreply.github.com>
-  synopsis: A cross-platform desktop pet
+  synopsis: A desktop pet for Linux
   description: |
-    DeskPet is a transparent, always-on-top desktop companion for Windows,
-    Linux and macOS. Cut a character out of any picture, give it reactions,
-    custom actions and voices, and connect an OpenAI-compatible model.
+    DeskPet is a transparent desktop companion for Linux (X11/XWayland).
+    Cut a character out of any picture, give it reactions, custom actions and
+    voices, and connect an OpenAI-compatible model.
   executableName: deskpet
   executableArgs:
     - --ozone-platform=x11
@@ -96,21 +40,19 @@ linux:
     - target: AppImage
       arch:
         - x64
-        - arm64
     - target: deb
       arch:
         - x64
     - target: rpm
       arch:
         - x64
-    # Arch Linux native package
     - target: pacman
       arch:
         - x64
   desktop:
     entry:
       Name: DeskPet
-      Comment: A cross-platform desktop pet
+      Comment: A desktop pet for Linux
       Categories: Utility;Game;
       Terminal: false
       X-GNOME-UsesNotifications: true

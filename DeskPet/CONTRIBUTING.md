@@ -79,7 +79,7 @@ npm run build
 
 - 桌宠窗口尺寸常量在 `src/shared/defaults.ts`（`PET_WINDOW` / `CHAT_WINDOW`）。
 - 气泡/聊天的 `bottom` 使用 `--pet-scale` 计算，修改桌宠高度时保持对齐。
-- 命中测试由渲染进程 `updateHitbox()` 上报，加入新的可点击元素时记得把它并入 hitbox（参考 `updateHitbox` 里的 controls/bubble）。
+- 命中测试由渲染进程 `updateHitbox()` 上报；加入新的可点击元素时记得把它并入 hitbox（参考 `updateHitbox` 里的 bubble/chat）。桌宠不再有悬浮工具栏，交互入口是右键菜单。
 
 ## 自动化检查
 

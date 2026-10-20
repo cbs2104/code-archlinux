@@ -1,4 +1,4 @@
-import { powerMonitor, systemPreferences } from 'electron'
+import { powerMonitor } from 'electron'
 import { createRequire } from 'node:module'
 import type { AppConfig, InputEvent, InputStatus } from '../shared/types'
 import { log } from './logger'
@@ -46,26 +46,15 @@ export class InputMonitor {
   ) {}
 
   status(): InputStatus {
-    let sessionType = process.platform === 'linux' ? 'x11' : 'native'
-    if (process.platform === 'linux') {
-      if (process.env.XDG_SESSION_TYPE) sessionType = process.env.XDG_SESSION_TYPE
-      else if (process.env.WAYLAND_DISPLAY) sessionType = 'wayland'
-    }
-    let accessibilityTrusted = true
-    if (process.platform === 'darwin') {
-      try {
-        accessibilityTrusted = systemPreferences.isTrustedAccessibilityClient(false)
-      } catch {
-        accessibilityTrusted = false
-      }
-    }
+    const sessionType =
+      process.env.XDG_SESSION_TYPE || (process.env.WAYLAND_DISPLAY ? 'wayland' : 'x11')
     return {
       available: this.hook !== null,
       running: this.running,
       error: this.loadError,
-      platform: process.platform,
+      platform: 'linux',
       sessionType,
-      accessibilityTrusted
+      accessibilityTrusted: true
     }
   }
 
@@ -75,9 +64,9 @@ export class InputMonitor {
 
     if (!this.loadModule()) return this.status()
 
-    if (process.platform === 'linux' && !process.env.DISPLAY) {
+    if (!process.env.DISPLAY) {
       this.loadError =
-        '没有找到 X11 显示（DISPLAY）。Wayland 会话下只能部分监听，可在 Xorg 会话中使用完整键盘联动。'
+        '没有找到 X11 显示（DISPLAY）。请在 XWayland 或 Xorg 会话中运行 DeskPet。'
       log.warn(this.loadError)
       return this.status()
     }
@@ -117,15 +106,6 @@ export class InputMonitor {
   wake(): void {
     this.sleeping = false
     this.lastInputAt = Date.now()
-  }
-
-  promptAccessibility(): boolean {
-    if (process.platform !== 'darwin') return true
-    try {
-      return systemPreferences.isTrustedAccessibilityClient(true)
-    } catch {
-      return false
-    }
   }
 
   private loadModule(): boolean {

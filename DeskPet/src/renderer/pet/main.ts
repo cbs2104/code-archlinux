@@ -14,7 +14,6 @@ const frameLayer = document.getElementById('pet-frame') as HTMLImageElement
 const spriteWrap = document.getElementById('sprite-wrap') as HTMLElement
 const bubble = document.getElementById('bubble') as HTMLElement
 const bubbleText = document.getElementById('bubble-text') as HTMLElement
-const controls = document.getElementById('controls') as HTMLElement
 const zzz = document.getElementById('zzz') as HTMLElement
 
 let config: AppConfig
@@ -36,15 +35,6 @@ function updateHitbox(): void {
   let top = rect.top
   let right = rect.right
   let bottom = rect.bottom
-  if (hovering) {
-    const controlRect = controls.getBoundingClientRect()
-    if (controlRect.width > 0 && controlRect.height > 0) {
-      left = Math.min(left, controlRect.left)
-      top = Math.min(top, controlRect.top)
-      right = Math.max(right, controlRect.right)
-      bottom = Math.max(bottom, controlRect.bottom)
-    }
-  }
   if (!bubble.classList.contains('hidden')) {
     const bubbleRect = bubble.getBoundingClientRect()
     if (bubbleRect.width > 0) {
@@ -67,9 +57,7 @@ function updateHitbox(): void {
 function setHovering(value: boolean): void {
   if (hovering === value) return
   hovering = value
-  stage.classList.toggle('hovering', value)
   api.pet.setInteractive(value)
-  updateHitbox()
 }
 
 function renderSprite(): void {
@@ -271,19 +259,11 @@ function wireEvents(): void {
   spriteWrap.addEventListener('pointerup', finishPointer)
   spriteWrap.addEventListener('pointercancel', finishPointer)
 
-  spriteWrap.addEventListener('contextmenu', (event) => {
+  stage.addEventListener('contextmenu', (event) => {
+    const target = event.target as HTMLElement | null
+    if (target?.closest('#chat')) return
     event.preventDefault()
     api.pet.contextMenu()
-  })
-
-  controls.querySelectorAll<HTMLButtonElement>('button[data-action]').forEach((button) => {
-    button.addEventListener('click', (event) => {
-      event.stopPropagation()
-      const action = button.dataset.action
-      if (action === 'chat') void chat.toggle()
-      else if (action === 'settings') api.pet.openSettings('pet')
-      else if (action === 'hide') api.pet.hide()
-    })
   })
 
   const bubbleClose = document.getElementById('bubble-close')

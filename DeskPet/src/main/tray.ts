@@ -22,7 +22,7 @@ export class TrayMenu {
 
   create(actions: TrayActions): void {
     this.actions = actions
-    const size = process.platform === 'darwin' ? 18 : 20
+    const size = 20
     let image = nativeImage.createFromPath(iconPath())
     if (image.isEmpty()) {
       log.warn(`Tray icon not found at ${iconPath()}`)

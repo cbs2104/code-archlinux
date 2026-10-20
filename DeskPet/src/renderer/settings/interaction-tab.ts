@@ -56,12 +56,12 @@ export class InteractionTab implements TabView {
 
     this.togglePetInput = textInput({
       value: cfg.hotkeys.togglePet,
-      placeholder: 'CommandOrControl+Alt+Shift+P',
+      placeholder: 'Control+Alt+Shift+P',
       mono: true
     })
     this.openChatInput = textInput({
       value: cfg.hotkeys.openChat,
-      placeholder: 'CommandOrControl+Alt+Shift+K',
+      placeholder: 'Control+Alt+Shift+K',
       mono: true
     })
 
@@ -104,22 +104,7 @@ export class InteractionTab implements TabView {
                   toast(next.running ? '监听已重启' : '监听仍未启动', next.running ? 'success' : 'error')
                 })
                 .catch(notifyError)
-            }),
-            status.platform === 'darwin' && !status.accessibilityTrusted
-              ? button(
-                  '授予辅助功能权限',
-                  () => {
-                    void this.ctx.api.system.requestAccessibility().then(() => {
-                      toast(
-                        '请在系统设置的「隐私与安全性 → 辅助功能」里勾选 DeskPet',
-                        'info',
-                        6000
-                      )
-                    })
-                  },
-                  'primary'
-                )
-              : null
+            })
           )
         )
       ),
@@ -173,7 +158,7 @@ export class InteractionTab implements TabView {
       card(
         section(
           '全局快捷键',
-          '即使桌宠被其他窗口挡住，也能用快捷键叫它出来。（Wayland 下可能不可用）',
+          '即使桌宠被其他窗口挡住，也能用快捷键叫它出来。',
           row('显示 / 隐藏桌宠', this.togglePetInput),
           row('打开聊天', this.openChatInput),
           h(
@@ -221,7 +206,7 @@ export class InteractionTab implements TabView {
                 .catch(notifyError)
             }
           }),
-          hint('Linux 会写入 ~/.config/autostart/deskpet.desktop；Windows / macOS 使用系统登录项。')
+          hint('写入 ~/.config/autostart/deskpet.desktop，登录 GNOME 后自动启动。')
         )
       )
     )
@@ -229,25 +214,16 @@ export class InteractionTab implements TabView {
 
   private platformNote(): HTMLElement | null {
     const status = this.ctx.state.inputStatus
-    if (status.platform === 'darwin' && !status.accessibilityTrusted) {
+    if (status.sessionType === 'wayland') {
       return h('p', {
         class: 'status-warn',
-        text: 'macOS 需要在「系统设置 → 隐私与安全性 → 辅助功能」中允许 DeskPet，否则只能监听鼠标位置。'
+        text: '当前是 Wayland 会话，DeskPet 通过 XWayland 运行；原生 Wayland 应用的键盘事件不会被捕获。'
       })
     }
-    if (status.platform === 'linux' && status.sessionType === 'wayland') {
-      return h('p', {
-        class: 'status-warn',
-        text: 'Wayland 会话对全局键盘监听限制较多：鼠标跟随仍然可用；如果键盘反应无效，请登录 Xorg 会话或使用桌面环境快捷键。'
-      })
-    }
-    if (status.platform === 'linux') {
-      return h('p', {
-        class: 'muted',
-        text: 'Linux 需要 X11 与 libXtst。若模块加载失败，请安装 libxtst 后重启 DeskPet。'
-      })
-    }
-    return null
+    return h('p', {
+      class: 'muted',
+      text: 'Linux 需要 X11/XWayland 与 libXtst。若模块加载失败，请安装 libxtst 后重启 DeskPet。'
+    })
   }
 
   private async applyHotkeys(): Promise<void> {

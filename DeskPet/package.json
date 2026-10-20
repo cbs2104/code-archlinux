@@ -1,8 +1,8 @@
 {
   "name": "deskpet",
   "productName": "DeskPet",
-  "version": "1.0.3",
-  "description": "Cross-platform Electron desktop pet: cut out your own character, react to keyboard/mouse, play custom actions and voices, and chat with AI.",
+  "version": "1.1.0",
+  "description": "Linux Electron desktop pet: cut out your own character, react to keyboard/mouse, play custom actions and voices, and chat with AI.",
   "desktopName": "deskpet.desktop",
   "main": "./out/main/index.js",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "desktop-pet",
     "shimeji",
     "ai",
-    "cross-platform"
+    "linux"
   ],
   "engines": {
     "node": ">=20.19.0"
@@ -26,9 +26,7 @@
     "test": "node scripts/test-shared.mjs",
     "icons": "node scripts/generate-icons.mjs",
     "pack:dir": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac",
+    "dist": "npm run build && electron-builder --linux",
     "dist:linux": "npm run build && electron-builder --linux",
     "dist:linux:appimage": "npm run build && electron-builder --linux AppImage",
     "dist:linux:pacman": "npm run build && electron-builder --linux pacman",

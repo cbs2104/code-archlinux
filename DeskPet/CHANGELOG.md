@@ -2,6 +2,15 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [1.1.0] - 2025-10-20
+
+### 变更
+
+- **桌宠可自由放置**：拖动到桌面任意位置后停在原地，不再自动落回屏幕底部；位置会保存，重启后恢复。自动溜达改为在当前高度水平移动。
+- **项目范围改为 Linux-only**：移除 Windows / macOS 构建目标、平台分支、图标与文档；`electron-builder` 只保留 Linux 的 AppImage / deb / rpm / pacman，GitHub Actions 只构建 Linux。
+- 移除桌宠右侧的悬浮聊天/设置/隐藏按钮，只保留右键功能菜单；右键桌宠或透明区域即可打开聊天、打招呼、设置、换位置、隐藏、退出。
+- 点击穿透默认关闭，设置页仍可手动开启；指针进入桌宠时暂停自动溜达。
+
 ## [1.0.3] - 2025-10-20
 
 ### 修复
@@ -14,11 +23,11 @@
 
 ### 修复
 
-- **桌宠切换工作区后消失**：Linux 现在真正应用「显示在所有桌面 / 全屏应用之上」（`setVisibleOnAllWorkspaces`），不再只有 macOS 生效；设置默认开启，`version: 1` 的旧配置会自动迁移为开启。桌宠的 `_NET_WM_DESKTOP` 变为 `-1`（Sticky），切换 GNOME 工作区仍可见。
+- **桌宠切换工作区后消失**：Linux 现在真正应用「显示在所有桌面 / 全屏应用之上」（`setVisibleOnAllWorkspaces`）；设置默认开启，`version: 1` 的旧配置会自动迁移为开启。桌宠的 `_NET_WM_DESKTOP` 变为 `-1`（Sticky），切换 GNOME 工作区仍可见。
 - **窗口显示后重新应用置顶**：`showInactive()` 后再次调用 `setAlwaysOnTop` + `moveTop()`，避免 Electron 在映射窗口时丢失置顶状态；拖动/漫游/打开设置后仍保持在普通窗口之上。
 - **点击穿透兜底**：渲染进程在指针进入桌宠时立即调用 `setInteractive(true)`，主进程同步解除 `setIgnoreMouseEvents`，不再完全依赖 40ms 的全局光标轮询。
 - **设置页开关点不动**：开关的 `<input type="checkbox">` 被样式设成 0×0，实际点击落在装饰性的滑块上，所有 toggle 都无法切换。现在 input 铺满整个 switch（`position:absolute; inset:0`），可以直接关闭「显示在所有桌面」「透明区域可以点穿」等选项。
-- 设置页提示更新为 macOS / Linux 生效。
+- 设置页提示更新为 Linux。
 
 ## [1.0.1] - 2025-10-20
 
@@ -51,17 +60,17 @@
 - **动作系统**：13 种触发条件、10 种动画、序列帧、精灵图切分、动作音效/配音、冷却、情绪标记、实时测试、恢复默认。
 - **语音**：系统 TTS（音色/语言/语速/音调/音量）、动作台词朗读、Whisper 兼容语音输入。
 - **AI**：OpenAI 兼容接口、流式回复、预设（OpenAI/DeepSeek/Moonshot/百炼/Ollama/LM Studio）、可编辑人格、聊天记忆、情绪标记、连接测试。
-- **系统集成**：托盘菜单、全局快捷键、单实例、开机自启、记住位置、所有工作区/全屏置顶（macOS）。
+- **系统集成**：托盘菜单、全局快捷键、单实例、开机自启、记住位置、所有工作区/全屏置顶。
 - **工程化**：Electron 44 + electron-vite 6 + Vite 7 + TypeScript 严格模式；`contextIsolation`、来源校验、CSP、自定义资源协议、safeStorage、日志轮转。
-- **打包**：Windows NSIS/portable、macOS dmg/zip、Linux AppImage/deb/rpm/pacman；GitHub Actions 三平台 CI 与 tag 发布。
+- **打包**：Linux AppImage/deb/rpm/pacman；GitHub Actions 自动构建与 tag 发布。
 - 文档：README、架构、桌宠包格式、平台差异、贡献与安全说明；SVG 图标与 banner。
 
 ### 已知限制
 
 - 原生 Wayland 下无法程序化移动窗口或可靠捕获原生 Wayland 应用键盘；默认走 XWayland。
-- macOS 需要辅助功能权限；未签名包需手动放行。
 - 桌宠包导出为文件夹（未内置 zip）。
 
+[1.1.0]: https://github.com/DeskPet/DeskPet/releases/tag/v1.1.0
 [1.0.3]: https://github.com/DeskPet/DeskPet/releases/tag/v1.0.3
 [1.0.2]: https://github.com/DeskPet/DeskPet/releases/tag/v1.0.2
 [1.0.1]: https://github.com/DeskPet/DeskPet/releases/tag/v1.0.1

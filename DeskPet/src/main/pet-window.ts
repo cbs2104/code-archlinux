@@ -202,10 +202,8 @@ export class PetWindow {
     const win = this.win
     if (!win || win.isDestroyed()) return
     const cfg = this.config.get()
-    win.setAlwaysOnTop(cfg.pet.alwaysOnTop, process.platform === 'darwin' ? 'floating' : 'normal')
-    if (process.platform === 'darwin' || process.platform === 'linux') {
-      win.setVisibleOnAllWorkspaces(cfg.pet.showOnAllWorkspaces, { visibleOnFullScreen: true })
-    }
+    win.setAlwaysOnTop(cfg.pet.alwaysOnTop)
+    win.setVisibleOnAllWorkspaces(cfg.pet.showOnAllWorkspaces, { visibleOnFullScreen: true })
     if (cfg.pet.alwaysOnTop && win.isVisible()) {
       try {
         win.moveTop()

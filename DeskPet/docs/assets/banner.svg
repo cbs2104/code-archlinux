@@ -36,7 +36,7 @@
 
   <text x="348" y="128" font-family="'Noto Sans SC','Microsoft YaHei',sans-serif" font-size="64" font-weight="700" fill="#ffffff" letter-spacing="2">DeskPet</text>
   <text x="350" y="176" font-family="'Noto Sans SC','Microsoft YaHei',sans-serif" font-size="23" fill="#c9d2e3">把你的角色抠出来，放到桌面上</text>
-  <text x="350" y="220" font-family="'Noto Sans SC','Microsoft YaHei',sans-serif" font-size="19" fill="#8f9bb3">自定义抠图 · 键鼠联动 · 动作与语音 · AI 聊天 · Windows / Linux / macOS</text>
+  <text x="350" y="220" font-family="'Noto Sans SC','Microsoft YaHei',sans-serif" font-size="19" fill="#8f9bb3">自定义抠图 · 键鼠联动 · 动作与语音 · AI 聊天 · Linux</text>
 
   <g transform="translate(350 252)">
     <rect width="132" height="34" rx="17" fill="#ff8f7a" opacity="0.16" stroke="#ff8f7a" stroke-opacity="0.4" />

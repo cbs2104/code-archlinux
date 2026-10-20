@@ -101,11 +101,11 @@ my-pet/
 | `click` | 单击桌宠 |
 | `double-click` | 双击桌宠 |
 | `drag-start` | 开始拖动（移动超过 4px） |
-| `land` | 抛掷/跳跃落地 |
+| `land` | 拖动结束 / 落地 |
 | `typing` | 全局打字（节流） |
 | `key-enter` | 全局 Enter |
 | `key-escape` | 全局 Esc |
-| `save-hotkey` | 全局 Ctrl/Cmd + S |
+| `save-hotkey` | 全局 Ctrl + S |
 | `wheel` | 全局滚轮 |
 | `mouse-near` | 鼠标靠近桌宠 |
 | `idle` | 系统空闲达到设置阈值 |

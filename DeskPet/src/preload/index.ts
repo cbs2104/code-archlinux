@@ -25,7 +25,7 @@ function on<T>(channel: string, cb: (payload: T) => void): () => void {
 const api: DeskPetApi = {
   app: {
     info: () => ipcRenderer.invoke('app:info'),
-    platform: process.platform,
+    platform: 'linux',
     quit: () => {
       void ipcRenderer.invoke('app:quit')
     },
@@ -110,7 +110,6 @@ const api: DeskPetApi = {
   system: {
     inputStatus: () => ipcRenderer.invoke('system:input-status'),
     restartInput: () => ipcRenderer.invoke('system:restart-input'),
-    requestAccessibility: () => ipcRenderer.invoke('system:request-accessibility'),
     hotkeyStatus: () => ipcRenderer.invoke('system:hotkey-status'),
     autostart: {
       get: () => ipcRenderer.invoke('system:get-autostart'),

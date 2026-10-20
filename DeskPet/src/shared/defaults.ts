@@ -71,8 +71,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     historyLimit: 12
   },
   hotkeys: {
-    togglePet: 'CommandOrControl+Alt+Shift+P',
-    openChat: 'CommandOrControl+Alt+Shift+K'
+    togglePet: 'Control+Alt+Shift+P',
+    openChat: 'Control+Alt+Shift+K'
   },
   launchAtLogin: false
 }
