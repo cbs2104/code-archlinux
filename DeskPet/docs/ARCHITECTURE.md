@@ -118,7 +118,9 @@ DeskPet 由三个进程/上下文组成：Electron 主进程、preload 桥、两
 - `state.ts`：配置 + 桌宠列表 + 输入/快捷键状态；统一的 `patch` / `reloadPacks`。
 - `ui.ts` / `shared/dom.ts`：无框架的小型 DOM 构造器与控件（开关、滑块、select、模态框、toast）。
 - 每个 tab 是一个实现 `TabView` 的类，惰性创建并复用 DOM。
-- `image-editor.ts`：离屏 canvas 保存当前像素，view canvas 负责显示叠加层；所有编辑操作在原始分辨率进行。泛洪、最大连通域、羽化、alpha 包围盒均为手写实现，无第三方图像库。
+- `image-editor.ts`：离屏 canvas 保存当前像素，view canvas 负责显示叠加层；所有编辑操作在原始分辨率进行。支持 25%–400% 缩放、棋盘格/深色/浅色预览、组合选区蒙版、软边橡皮与恢复画笔。
+- `cutout.ts`：无 DOM 的抠图算法层。自动抠图由「量化背景调色板 → 边缘感知泛洪 → 连通域清理 → 柔边 → 背景色反解」组成；边缘精修使用可分离 box blur、alpha 膨胀/收缩和半透明边缘去色。可单独在 Node 中测试。
+- `scripts/test-cutout.mjs`：覆盖纯色/渐变背景、调色板、杂点清理、alpha 扩张和输出边界。
 - `spritesheet.ts`：精灵图切分（跳过全透明格）与 `fetch` → dataURL 转换。
 
 ### IPC 通道

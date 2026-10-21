@@ -21,3 +21,5 @@
 - 遵守 `CONTRIBUTING.md` 的风格与目录约定。
 - 提交前至少运行 `npm run typecheck`、`npm test` 和 `npm run build`。
 - 修改窗口行为后，用 `xprop` 检查 `_NET_WM_STATE`、`_NET_WM_WINDOW_TYPE` 和 `_NET_WM_ALLOWED_ACTIONS`，确认没有任务栏和最小化动作。
+- 抠图/边缘算法必须放在 `src/renderer/settings/cutout.ts`（不要引入 DOM），UI 只负责 canvas 与交互；新增算法行为同步补 `scripts/test-cutout.mjs`。
+- 抠图工坊必须保持非破坏性：原图快照、恢复画笔、撤销/重做与输出 PNG 的透明边不能被新功能破坏。

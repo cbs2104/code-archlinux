@@ -14,6 +14,7 @@ export class StudioTab implements TabView {
   private readonly previewEl: HTMLElement
   private readonly infoEl: HTMLElement
   private readonly dropZone: HTMLElement
+  private readonly sizeSelect: HTMLSelectElement
   private sourceName = ''
   private previewTimer = 0
 
@@ -33,6 +34,17 @@ export class StudioTab implements TabView {
     this.previewEl = h('div', { class: 'studio-preview' })
     this.infoEl = h('span', { class: 'muted', text: '还没有抠好的图片' })
     this.dropZone = h('div', { class: 'editor-drop-hint', text: '也可以直接把图片拖到这里' })
+    this.sizeSelect = h(
+      'select',
+      { class: 'input select' },
+      h('option', { value: '512', text: '512 px · 轻量' }),
+      h('option', { value: '768', text: '768 px · 推荐' }),
+      h('option', { value: '1024', text: '1024 px · 高清' }),
+      h('option', { value: '1536', text: '1536 px · 超清' })
+    )
+    this.sizeSelect.value = '1024'
+    this.sizeSelect.addEventListener('change', () => this.syncResult())
+    this.targetSelect.addEventListener('change', () => this.syncResult())
 
     this.editor.setOnChange(() => {
       if (this.previewTimer) window.clearTimeout(this.previewTimer)
@@ -45,23 +57,29 @@ export class StudioTab implements TabView {
     this.el.append(
       card(
         section(
-          '抠图工坊',
-          '导入任意图片，把想要的部分抠出来当作桌宠。透明背景的 PNG 效果最好。',
+          '抠图工坊 2.0',
+          '从任意图片精细抠出桌宠：智能识别背景、软边精修、组合选区，并实时检查透明边缘。',
           h(
             'div',
             { class: 'action-row' },
             button('🖼 选择图片', () => void this.pickImage(), 'primary'),
-            hint('支持 PNG / JPG / WebP，超大图片会自动缩小到 1400px 以便处理。')
+            hint('支持 PNG / JPG / WebP；超大图片会先缩到 1600px 以便流畅编辑。')
           ),
           h(
             'ol',
             { class: 'steps' },
-            h('li', { text: '自动抠图：去掉图片四周的纯色背景，只保留最大的主体。' }),
             h('li', {
-              text: '套索 / 矩形：圈出目标后点「保留选区」，或圈出多余部分后点「删除选区」。'
+              text: '智能抠图：自动分析四周背景，处理渐变/噪点并生成柔和透明边。'
             }),
-            h('li', { text: '魔棒点背景可以按颜色去掉；橡皮可以手动修补边缘。' }),
-            h('li', { text: '满意后点击下方「创建新桌宠」。' })
+            h('li', {
+              text: '精细修补：用恢复画笔找回误删部分，用软边橡皮清掉残渣；Ctrl + 滚轮放大检查边缘。'
+            }),
+            h('li', {
+              text: '组合选区：矩形/套索/魔棒支持新建、Shift 加选、Alt 减选，再做保留、删除或裁剪。'
+            }),
+            h('li', {
+              text: '边缘精修：调整收缩/扩张、平滑、羽化与去色边，消除白边和锯齿。'
+            })
           )
         ),
         this.editor.el,
@@ -70,7 +88,7 @@ export class StudioTab implements TabView {
       card(
         section(
           '保存为桌宠',
-          '保存时会自动裁掉透明边并生成 PNG，最长边不超过 1024px。',
+          '保存时会自动裁掉透明边并生成 PNG；输出尺寸可在右侧选择。',
           h(
             'div',
             { class: 'save-grid' },
@@ -93,7 +111,10 @@ export class StudioTab implements TabView {
               { class: 'save-block preview-block' },
               h('span', { class: 'field-label', text: '抠图结果预览' }),
               this.previewEl,
-              this.infoEl
+              this.infoEl,
+              h('span', { class: 'field-label', text: '输出尺寸' }),
+              this.sizeSelect,
+              h('span', { class: 'field-hint', text: '按最长边等比缩放；透明边会被裁掉。' })
             )
           )
         ),
@@ -178,7 +199,7 @@ export class StudioTab implements TabView {
     try {
       await this.editor.load(dataUrl)
       this.syncResult()
-      toast('图片已载入，试试「自动抠图」', 'info')
+      toast('图片已载入，试试「智能抠图」', 'info')
     } catch (error) {
       notifyError(error)
     }
@@ -189,23 +210,27 @@ export class StudioTab implements TabView {
     this.createBtn.disabled = !hasImage
     this.replaceBtn.disabled = !hasImage || this.targetSelect.value === ''
     if (!hasImage) return
-    const result = this.editor.getResult()
+    const maxSize = Number(this.sizeSelect.value)
+    const result = this.editor.getResult(maxSize)
     if (!result) {
       this.previewEl.replaceChildren()
       this.infoEl.textContent = '没有检测到不透明像素'
       return
     }
+    const stats = this.editor.getStats()
     this.previewEl.replaceChildren(
       h('img', {
         attrs: { src: result.dataUrl, alt: '抠图预览' },
-        style: { maxWidth: '120px', maxHeight: '120px' }
+        style: { maxWidth: '160px', maxHeight: '160px' }
       })
     )
-    this.infoEl.textContent = `将输出 ${result.width} × ${result.height} PNG`
+    this.infoEl.textContent = stats
+      ? `将输出 ${result.width} × ${result.height} PNG · 柔边 ${stats.edgePixels.toLocaleString()} px`
+      : `将输出 ${result.width} × ${result.height} PNG`
   }
 
   private async saveNew(): Promise<void> {
-    const result = this.editor.getResult()
+    const result = this.editor.getResult(Number(this.sizeSelect.value))
     if (!result) {
       toast('请先抠出至少一个像素的图案', 'error')
       return
@@ -233,7 +258,7 @@ export class StudioTab implements TabView {
       toast('请选择一个自定义桌宠', 'error')
       return
     }
-    const result = this.editor.getResult()
+    const result = this.editor.getResult(Number(this.sizeSelect.value))
     if (!result) {
       toast('请先抠出至少一个像素的图案', 'error')
       return

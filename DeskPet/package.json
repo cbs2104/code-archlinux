@@ -1,7 +1,7 @@
 {
   "name": "deskpet",
   "productName": "DeskPet",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "description": "Linux Electron desktop pet: cut out your own character, react to keyboard/mouse, play custom actions and voices, and chat with AI.",
   "desktopName": "deskpet.desktop",
   "main": "./out/main/index.js",
@@ -23,7 +23,7 @@
     "start": "node scripts/dev.mjs preview",
     "build": "npm run typecheck && electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "test": "node scripts/test-shared.mjs",
+    "test": "node scripts/test-shared.mjs && node scripts/test-cutout.mjs",
     "icons": "node scripts/generate-icons.mjs",
     "pack:dir": "npm run build && electron-builder --dir",
     "archive:release": "node scripts/preserve-release.mjs",
