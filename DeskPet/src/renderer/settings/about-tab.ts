@@ -102,7 +102,7 @@ export class AboutTab implements TabView {
             h('code', { text: 'npm run dev' }),
             h('code', { text: 'npm run dist:linux' })
           ),
-          hint('Linux 打包目标：AppImage / deb / rpm / pacman。')
+          hint('Linux 打包目标：AppImage / deb / rpm / pacman，另有 Flatpak 脚本。')
         )
       ),
       card(

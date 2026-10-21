@@ -14,7 +14,7 @@ DeskPet 只面向 **Linux**（X11 / XWayland，含 Arch、Debian、Fedora 等）
 | 系统 TTS | ✅ speech-dispatcher | 同左 |
 | 麦克风 | ✅ | ✅ |
 | 开机自启 | ✅ `~/.config/autostart` | 同左 |
-| 打包目标 | AppImage / deb / rpm / pacman | 同左 |
+| 打包目标 | AppImage / deb / rpm / pacman / Flatpak | 同左 |
 
 ## Linux
 
@@ -54,6 +54,20 @@ sudo pacman -S --needed libxtst speech-dispatcher
 - 文件选择、麦克风等走 Chromium 自带实现，无需额外包；
 - 构建 pacman 包需要 `fakeroot`，且 electron-builder 的 fpm 自带 Ruby 依赖 `libcrypt.so.1`；在 Arch 上请安装 `libxcrypt-compat`，否则使用 `npm run dist:linux:appimage`。
 - AppImage 需要 `fakeroot`、`libarchive-tools`（或 `binutils`）。
+
+### Flatpak
+
+```bash
+flatpak install --user flathub org.gnome.Platform//50
+npm run dist:linux:flatpak
+flatpak install --user release/DeskPet-<version>-x86_64.flatpak
+flatpak run com.deskpet.app
+```
+
+- 使用 `org.gnome.Platform/x86_64/50` 运行库，不需要 `flatpak-builder`；
+- 权限：X11/XWayland、`ipc`、PulseAudio、GPU、网络、`home`、自动启动目录、通知、StatusNotifier 托盘、门户；
+- 沙箱内 Electron 使用 `--no-sandbox`，由 Flatpak 提供外层隔离；
+- 数据目录：`~/.var/app/com.deskpet.app/config/DeskPet/`。
 
 ### 桌面环境
 

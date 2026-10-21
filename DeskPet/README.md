@@ -89,7 +89,7 @@
 - Electron 44 + Vite 7 + electron-vite 6 + 严格 TypeScript。
 - 主进程 / preload / 渲染进程分离，`contextIsolation: true`、`nodeIntegration: false`，所有 IPC 校验来源。
 - 自定义 `deskpet://` 协议安全提供桌宠资源，路径穿越防护。
-- Linux `electron-builder` 配置：AppImage / deb / rpm / **pacman**（Arch）。
+- Linux `electron-builder` 配置：AppImage / deb / rpm / **pacman**（Arch），另有 Flatpak 打包脚本。
 - GitHub Actions 自动类型检查、构建和 Linux 打包。
 
 ---
@@ -330,6 +330,7 @@ npm run pack:dir     # 只生成未压缩目录，用于检查
 npm run dist         # Linux 全部目标
 npm run dist:linux   # Linux：AppImage + deb + rpm + pacman
 npm run dist:linux:appimage  # 只构建 AppImage（Arch 上最省事）
+npm run dist:linux:flatpak   # 只构建 Flatpak
 npm run dist:linux:pacman    # 只构建 pacman 包
 ```
 
@@ -338,10 +339,39 @@ npm run dist:linux:pacman    # 只构建 pacman 包
 | 目标 | 说明 |
 | --- | --- |
 | AppImage（x64） | 免安装，直接运行 |
+| Flatpak（x64） | 单文件 `.flatpak` 包 |
 | deb / rpm（x64） | Debian / Fedora 系安装包 |
 | **pacman**（x64） | Arch Linux 原生包 |
 
 > AppImage 需要 `fakeroot`、`libarchive-tools` 等；pacman/deb/rpm 目标使用 electron-builder 的 fpm，Arch 上构建 pacman 包需要额外安装 **`libxcrypt-compat`**（fpm 自带的 Ruby 依赖 `libcrypt.so.1`），否则请使用 `npm run dist:linux:appimage`。
+
+### Flatpak
+
+Flatpak 版本由 `scripts/build-flatpak.sh` 生成，直接复用 `release/linux-unpacked`，不需要 `flatpak-builder`：
+
+```bash
+# 先安装 GNOME 运行时（脚本默认使用 org.gnome.Platform 50）
+flatpak install --user flathub org.gnome.Platform//50
+
+npm run dist:linux:flatpak
+# 产物：release/DeskPet-<version>-x86_64.flatpak
+```
+
+安装与运行：
+
+```bash
+flatpak install --user release/DeskPet-1.1.0-x86_64.flatpak
+flatpak run com.deskpet.app
+flatpak run com.deskpet.app --settings
+```
+
+Flatpak 权限包含：X11/XWayland、PulseAudio、GPU、网络、`home` 文件访问、开机自启目录、桌面通知、StatusNotifier 托盘和门户。桌宠数据保存在：
+
+```text
+~/.var/app/com.deskpet.app/config/DeskPet/
+```
+
+> Flatpak 内使用 `--no-sandbox` 启动 Electron，外层由 Flatpak 沙箱隔离。首次启动会自动打开设置窗口。卸载：`flatpak uninstall --user com.deskpet.app`。
 
 ### 重新生成图标
 
@@ -365,7 +395,7 @@ npm run icons
 ```text
 DeskPet/
 ├── .github/
-│   ├── workflows/build.yml          # CI：typecheck + 三平台打包
+│   ├── workflows/build.yml          # CI：typecheck + Linux 打包
 │   ├── workflows/release.yml        # tag 发布
 │   ├── ISSUE_TEMPLATE/*.yml
 │   └── PULL_REQUEST_TEMPLATE.md
@@ -378,6 +408,7 @@ DeskPet/
 │   └── assets/banner.svg
 ├── scripts/
 │   ├── dev.mjs                      # 启动器：Wayland 下传入 --ozone-platform=x11
+│   ├── build-flatpak.sh             # 从 linux-unpacked 生成 .flatpak
 │   └── generate-icons.mjs
 ├── src/
 │   ├── main/                        # Electron 主进程
@@ -562,6 +593,7 @@ Linux 安装 `speech-dispatcher`（或 `espeak-ng`），重启 DeskPet；也可�
 - 修复点击交互：点击穿透默认关闭；指针位于桌宠上时暂停溜达。实测窗口 input shape 为完整 `720×760`，直接点击/拖动可用。
 - 自由定位：拖动可把窗口放到屏幕任意位置，松手后不再落回底部；位置会保存到配置，重启后保留。
 - 桌宠右侧悬浮按钮已移除，只保留右键功能菜单；右键桌宠或透明区域即可打开聊天 / 设置 / 隐藏等。
+- Flatpak：`scripts/build-flatpak.sh` 生成单文件 `.flatpak`，使用 GNOME Platform 50，已在用户安装并 `flatpak run com.deskpet.app` 验证（输入监听、桌宠/设置窗口正常）。
 - Linux-only：移除 Windows/macOS 构建目标与平台分支，CI 只构建 Linux 产物。
 
 ---

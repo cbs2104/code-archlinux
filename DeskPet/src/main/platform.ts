@@ -19,8 +19,12 @@ export function setAutostart(enabled: boolean): boolean {
       return false
     }
     mkdirSync(dirname(file), { recursive: true })
-    const exec = process.env.APPIMAGE || process.execPath
-    const appArgs = app.isPackaged ? '--hidden' : `"${app.getAppPath()}" --hidden`
+    const flatpakId = process.env.FLATPAK_ID
+    const exec = flatpakId
+      ? `flatpak run ${flatpakId}`
+      : `"${process.env.APPIMAGE || process.execPath}" ${
+          app.isPackaged ? '' : `"${app.getAppPath()}"`
+        }`.trim()
     writeFileSync(
       file,
       [
@@ -28,7 +32,7 @@ export function setAutostart(enabled: boolean): boolean {
         'Type=Application',
         'Name=DeskPet',
         'Comment=A desktop pet for Linux',
-        `Exec="${exec}" ${appArgs}`,
+        `Exec=${exec} --hidden`,
         'Terminal=false',
         'X-GNOME-Autostart-enabled=true',
         'StartupNotify=false',

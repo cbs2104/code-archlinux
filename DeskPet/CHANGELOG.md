@@ -8,6 +8,7 @@
 
 - **桌宠可自由放置**：拖动到桌面任意位置后停在原地，不再自动落回屏幕底部；位置会保存，重启后恢复。自动溜达改为在当前高度水平移动。
 - **项目范围改为 Linux-only**：移除 Windows / macOS 构建目标、平台分支、图标与文档；`electron-builder` 只保留 Linux 的 AppImage / deb / rpm / pacman，GitHub Actions 只构建 Linux。
+- 新增 Flatpak 打包脚本 `scripts/build-flatpak.sh` 与 `npm run dist:linux:flatpak`，生成单文件 `.flatpak`。
 - 移除桌宠右侧的悬浮聊天/设置/隐藏按钮，只保留右键功能菜单；右键桌宠或透明区域即可打开聊天、打招呼、设置、换位置、隐藏、退出。
 - 点击穿透默认关闭，设置页仍可手动开启；指针进入桌宠时暂停自动溜达。
 
