@@ -56,7 +56,7 @@ body:
     attributes:
       label: DeskPet 版本
       description: 设置 → 关于 里可以看到；开发模式请填 commit
-      placeholder: 1.1.0
+      placeholder: 1.1.1
     validations:
       required: true
 

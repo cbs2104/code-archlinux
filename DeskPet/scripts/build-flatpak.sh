@@ -94,3 +94,5 @@ mkdir -p "$(dirname "$OUT")"
 flatpak build-bundle "$REPO" "$OUT" "$APP_ID"
 
 echo "Built $OUT"
+# Keep every version under release/<version>/, even when this script is run directly.
+node "$ROOT/scripts/preserve-release.mjs"

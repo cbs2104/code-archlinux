@@ -57,6 +57,7 @@ DeskPet 由三个进程/上下文组成：Electron 主进程、preload 桥、两
 
 窗口固定为透明、无边框、不可调整大小（`PetWindow`）：
 
+- **桌面归属**：使用 Linux EWMH `toolbar` 窗口类型（`type: 'toolbar'`），让 WM 设置 `_NET_WM_STATE_SKIP_TASKBAR` / `_NET_WM_STATE_SKIP_PAGER` 并移除最小化/关闭动作；桌宠不会进入任务栏，也不能被最小化。若个别 WM 仍发送最小化事件，主进程会自动 `restore()` 并重新显示。
 - **移动**：渲染进程引擎每帧计算窗口左上角并调用 `pet:move-to`（节流 30fps），主进程按目标显示器工作区夹取；支持二维自由位置，不再有重力落回底部。
 - **点击穿透**：默认关闭，整个窗口接收鼠标。开启后主进程每 40ms 读取一次 `screen.getCursorScreenPoint()`，与渲染进程上报的 hitbox（CSS px，相对窗口）比较；只有光标在桌宠/悬浮按钮/气泡上时才 `setIgnoreMouseEvents(false)`。
 - **拖拽**：渲染进程 `pointerdown` 后捕获指针，`pointermove` 的 `screenX/screenY` 驱动窗口位置；松手后停在当前位置，主进程在拖拽期间保持可交互。

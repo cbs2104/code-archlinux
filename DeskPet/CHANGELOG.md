@@ -2,6 +2,17 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [1.1.1] - 2026-10-21
+
+### 修复
+
+- **桌宠会被收进任务栏 / 最小化**：Linux 版 Electron 的 `skipTaskbar` 实际只支持 Windows/macOS，桌宠仍以普通窗口出现在任务栏，且 `_NET_WM_ALLOWED_ACTIONS` 包含最小化。现在桌宠窗口使用 EWMH `toolbar` 类型，WM 会自动设置 `_NET_WM_STATE_SKIP_TASKBAR` / `_NET_WM_STATE_SKIP_PAGER`，不再出现在任务栏或分页器，也不会被最小化；同时保留置顶、所有工作区可见和鼠标拖动。
+- **开机自启后桌宠默认隐藏**：autostart 的 `Exec` 不再附加 `--hidden`，登录后直接显示桌宠；应用启动时也会刷新旧版本写入的 `--hidden` 条目。手动使用 `--hidden` 仍可隐藏启动。
+
+### 变更
+
+- **每个版本的产物都保留**：新增 `scripts/preserve-release.mjs`，打包命令会自动把当前版本复制到 `release/<version>/` 并生成 `SHA256SUMS`；`npm run archive:release:all` 可补归档历史版本。新增 `docs/RELEASES.md` 和 `AGENTS.md` 固化规则。
+
 ## [1.1.0] - 2025-10-20
 
 ### 变更
@@ -71,6 +82,7 @@
 - 原生 Wayland 下无法程序化移动窗口或可靠捕获原生 Wayland 应用键盘；默认走 XWayland。
 - 桌宠包导出为文件夹（未内置 zip）。
 
+[1.1.1]: https://github.com/DeskPet/DeskPet/releases/tag/v1.1.1
 [1.1.0]: https://github.com/DeskPet/DeskPet/releases/tag/v1.1.0
 [1.0.3]: https://github.com/DeskPet/DeskPet/releases/tag/v1.0.3
 [1.0.2]: https://github.com/DeskPet/DeskPet/releases/tag/v1.0.2

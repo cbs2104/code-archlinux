@@ -1,7 +1,7 @@
 {
   "name": "deskpet",
   "productName": "DeskPet",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Linux Electron desktop pet: cut out your own character, react to keyboard/mouse, play custom actions and voices, and chat with AI.",
   "desktopName": "deskpet.desktop",
   "main": "./out/main/index.js",
@@ -26,12 +26,14 @@
     "test": "node scripts/test-shared.mjs",
     "icons": "node scripts/generate-icons.mjs",
     "pack:dir": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder --linux",
-    "dist:linux": "npm run build && electron-builder --linux",
-    "dist:linux:appimage": "npm run build && electron-builder --linux AppImage",
+    "archive:release": "node scripts/preserve-release.mjs",
+    "archive:release:all": "node scripts/preserve-release.mjs --all",
+    "dist": "npm run build && electron-builder --linux && node scripts/preserve-release.mjs",
+    "dist:linux": "npm run build && electron-builder --linux && node scripts/preserve-release.mjs",
+    "dist:linux:appimage": "npm run build && electron-builder --linux AppImage && node scripts/preserve-release.mjs",
     "dist:linux:flatpak": "npm run build && electron-builder --linux --dir && bash scripts/build-flatpak.sh",
-    "dist:linux:pacman": "npm run build && electron-builder --linux pacman",
-    "release": "npm run build && electron-builder --publish always"
+    "dist:linux:pacman": "npm run build && electron-builder --linux pacman && node scripts/preserve-release.mjs",
+    "release": "npm run build && electron-builder --publish always && node scripts/preserve-release.mjs"
   },
   "dependencies": {},
   "optionalDependencies": {

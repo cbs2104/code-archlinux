@@ -92,7 +92,7 @@ npm run build
 npx electron-builder --publish never
 ```
 
-三平台分别构建。提交 PR 前请确认没有把 `out/`、`release/`、`node_modules/` 或本地配置提交进来。
+CI 只构建 Linux 目标。提交 PR 前请确认没有把 `out/`、`release/`、`node_modules/` 或本地配置提交进来。
 
 ## 提交 PR
 
@@ -103,6 +103,15 @@ npx electron-builder --publish never
 
 ## 发布
 
-1. 更新 `CHANGELOG.md` 与 `package.json` 版本。
-2. 提交并打 tag：`git tag v1.0.1 && git push --tags`。
-3. `.github/workflows/release.yml` 会构建三平台产物并创建 Release。
+1. 更新 `CHANGELOG.md` 与 `package.json` 版本（版本号必须递增）。
+2. 构建并归档所有需要发布的 Linux 产物：
+
+   ```bash
+   npm run dist:linux           # AppImage + deb + rpm + pacman
+   npm run dist:linux:flatpak   # 额外生成 Flatpak
+   npm run archive:release:all  # 把 release 根目录里的历史版本也归档
+   ```
+
+3. 确认 `release/<version>/` 中保留了当前版本，且旧版本目录没有被删除；每个版本目录应包含 `SHA256SUMS`。规则详见 [`docs/RELEASES.md`](docs/RELEASES.md)。
+4. 提交并打 tag：`git tag v1.1.1 && git push --tags`。
+5. `.github/workflows/release.yml` 会构建 Linux 产物并创建 Release。

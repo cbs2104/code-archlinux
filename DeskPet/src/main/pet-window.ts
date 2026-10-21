@@ -68,7 +68,11 @@ export class PetWindow {
       minimizable: false,
       maximizable: false,
       fullscreenable: false,
-      skipTaskbar: true,
+      // Electron's skipTaskbar is only implemented on Windows/macOS. On Linux
+      // the EWMH toolbar type makes the WM add _NET_WM_STATE_SKIP_TASKBAR and
+      // _NET_WM_STATE_SKIP_PAGER, so the pet never appears in the taskbar or
+      // pager and cannot be minimized/closed like a normal application.
+      type: 'toolbar',
       focusable: true,
       roundedCorners: false,
       title: 'DeskPet',
@@ -112,6 +116,15 @@ export class PetWindow {
     }
 
     win.once('ready-to-show', () => reveal('ready-to-show'))
+    win.on('minimize', () => {
+      if (this.isHidden || win.isDestroyed()) return
+      // Some WMs ignore the toolbar type's allowed-actions list. A desktop pet
+      // must never disappear into the taskbar, so put it straight back.
+      log.warn('Pet window was minimized; restoring it to the desktop')
+      win.restore()
+      win.showInactive()
+      this.applyWindowFlags()
+    })
     if (!options.hidden) {
       // ready-to-show can be delayed by a broken GPU/compositor; never leave
       // the user with an invisible transparent window.

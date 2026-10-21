@@ -32,7 +32,7 @@ export function setAutostart(enabled: boolean): boolean {
         'Type=Application',
         'Name=DeskPet',
         'Comment=A desktop pet for Linux',
-        `Exec=${exec} --hidden`,
+        `Exec=${exec}`,
         'Terminal=false',
         'X-GNOME-Autostart-enabled=true',
         'StartupNotify=false',

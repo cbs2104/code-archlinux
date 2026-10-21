@@ -324,7 +324,9 @@ async function bootstrap(): Promise<void> {
   setupDisplayListeners()
   setupPowerListeners()
   applyConfig(config)
-  if (config.launchAtLogin) setAutostart(true)
+  // Refresh an existing entry too: older versions wrote `--hidden`, which made
+  // the pet start invisible after login. The current entry always shows it.
+  if (config.launchAtLogin || getAutostart()) setAutostart(true)
   const actualAutostart = getAutostart()
   if (actualAutostart !== config.launchAtLogin) {
     config = store.patch({ launchAtLogin: actualAutostart })

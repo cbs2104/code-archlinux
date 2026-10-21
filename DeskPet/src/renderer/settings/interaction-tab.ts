@@ -206,7 +206,7 @@ export class InteractionTab implements TabView {
                 .catch(notifyError)
             }
           }),
-          hint('写入 ~/.config/autostart/deskpet.desktop，登录 GNOME 后自动启动。')
+          hint('写入 ~/.config/autostart/deskpet.desktop，登录后自动启动并显示桌宠。')
         )
       )
     )

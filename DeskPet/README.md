@@ -2,7 +2,7 @@
 
 # DeskPet · 桌面小搭档
 
-一个用 **Electron + TypeScript** 写的 **Linux 桌宠**：把任意图片里的角色抠出来放到桌面上，让它对键盘、鼠标、AI 回复做出反应，支持自定义序列帧动作、音效、系统语音，并通过 AppImage / deb / rpm / pacman 运行在 Linux 上。
+一个用 **Electron + TypeScript** 写的 **Linux 桌宠**：把任意图片里的角色抠出来放到桌面上，让它对键盘、鼠标、AI 回复做出反应，支持自定义序列帧动作、音效、系统语音，并通过 AppImage / Flatpak / deb / rpm / pacman 运行在 Linux 上。
 
 > 不是玩具 demo：包含完整的抠图工坊、动作编辑器、全局输入监听、AI 流式对话、语音合成/识别、托盘、单实例、配置持久化、Linux 打包配置与 GitHub Actions。
 >
@@ -22,6 +22,7 @@
 - [语音与自定义配音](#语音与自定义配音)
 - [键盘--鼠标联动](#键盘--鼠标联动)
 - [打包](#打包)
+- [版本产物保留](#版本产物保留)
 - [项目结构](#项目结构)
 - [数据与隐私](#数据与隐私)
 - [Linux 平台说明与已知限制](#linux-平台说明与已知限制)
@@ -44,12 +45,12 @@
 
 ### 桌面行为
 
-- 透明、无边框、置顶窗口；默认整个窗口接收鼠标，可在设置里开启「透明区域可以点穿」。
+- 透明、无边框、置顶窗口；以 Linux `toolbar` 窗口类型运行，不会出现在任务栏/分页器，也不会被最小化成普通应用窗口。默认整个窗口接收鼠标，可在设置里开启「透明区域可以点穿」。
 - **可以拖动到桌面任意位置并停在那里**，松手后 60 秒内不会自动溜达；如果开启自动溜达，会在当前高度水平走动。
 - 待机一段时间会睡觉，键盘/鼠标一动就醒。
 - 智能体始终在屏幕内，跑丢了可从托盘或设置里「回到右下角」。
 - 系统托盘：显示/隐藏、打招呼、聊天、设置、重置位置、开机自启、退出。
-- 单实例、记住位置、开机自启（写入 `~/.config/autostart/deskpet.desktop`）。
+- 单实例、记住位置、开机自启（写入 `~/.config/autostart/deskpet.desktop`，登录后直接显示桌宠）。
 
 ### 键盘 / 鼠标联动
 
@@ -144,7 +145,7 @@ npm start           # 预览生产构建
 
 | 参数 | 作用 |
 | --- | --- |
-| `--hidden` / `--start-hidden` | 启动时不显示桌宠（只留在托盘/设置） |
+| `--hidden` / `--start-hidden` | 启动时不显示桌宠（只留在托盘/设置）；**开机自启不附加此参数** |
 | `--settings` / `--open-settings` | 启动时直接打开设置窗口 |
 | `DESKPET_OZONE_PLATFORM=x11` | Linux 强制使用 XWayland（Wayland 会话有 DISPLAY 时的默认行为） |
 | `DESKPET_OZONE_PLATFORM=wayland` | Linux 不自动重启，直接使用原生 Wayland（拖拽/漫游/精确定位会失效；不推荐） |
@@ -334,7 +335,7 @@ npm run dist:linux:flatpak   # 只构建 Flatpak
 npm run dist:linux:pacman    # 只构建 pacman 包
 ```
 
-产物输出到 `release/`：
+产物输出到 `release/`，并自动归档到 `release/<version>/`：
 
 | 目标 | 说明 |
 | --- | --- |
@@ -345,6 +346,33 @@ npm run dist:linux:pacman    # 只构建 pacman 包
 
 > AppImage 需要 `fakeroot`、`libarchive-tools` 等；pacman/deb/rpm 目标使用 electron-builder 的 fpm，Arch 上构建 pacman 包需要额外安装 **`libxcrypt-compat`**（fpm 自带的 Ruby 依赖 `libcrypt.so.1`），否则请使用 `npm run dist:linux:appimage`。
 
+### 版本产物保留
+
+`release/` 不会因为构建新版本而清理旧版本。上面的打包命令结束后会自动执行 `scripts/preserve-release.mjs`：
+
+```text
+release/
+  DeskPet-1.1.1-x86_64.AppImage
+  DeskPet-1.1.1-x86_64.flatpak
+  1.1.0/
+    DeskPet-1.1.0-x86_64.AppImage
+    DeskPet-1.1.0-x86_64.flatpak
+    SHA256SUMS
+  1.1.1/
+    DeskPet-1.1.1-x86_64.AppImage
+    DeskPet-1.1.1-x86_64.flatpak
+    SHA256SUMS
+```
+
+可以单独补归档：
+
+```bash
+npm run archive:release       # 当前 package.json 版本
+npm run archive:release:all   # release 根目录里的所有版本
+```
+
+完整规则见 [docs/RELEASES.md](docs/RELEASES.md)。**不要删除 `release/` 里的历史版本目录。**
+
 ### Flatpak
 
 Flatpak 版本由 `scripts/build-flatpak.sh` 生成，直接复用 `release/linux-unpacked`，不需要 `flatpak-builder`：
@@ -354,13 +382,14 @@ Flatpak 版本由 `scripts/build-flatpak.sh` 生成，直接复用 `release/linu
 flatpak install --user flathub org.gnome.Platform//50
 
 npm run dist:linux:flatpak
-# 产物：release/DeskPet-<version>-x86_64.flatpak
+# 产物：release/DeskPet-1.1.1-x86_64.flatpak
+# 同时归档到 release/1.1.1/
 ```
 
 安装与运行：
 
 ```bash
-flatpak install --user release/DeskPet-1.1.0-x86_64.flatpak
+flatpak install --user release/DeskPet-1.1.1-x86_64.flatpak
 flatpak run com.deskpet.app
 flatpak run com.deskpet.app --settings
 ```

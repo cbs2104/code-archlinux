@@ -13,7 +13,8 @@ DeskPet 只面向 **Linux**（X11 / XWayland，含 Arch、Debian、Fedora 等）
 | 全局快捷键 | ✅ | ⚠️ 通常不可用 |
 | 系统 TTS | ✅ speech-dispatcher | 同左 |
 | 麦克风 | ✅ | ✅ |
-| 开机自启 | ✅ `~/.config/autostart` | 同左 |
+| 开机自启 | ✅ `~/.config/autostart`，登录后显示桌宠 | 同左 |
+| 任务栏 / 最小化 | ✅ 使用 EWMH `toolbar` 类型，不进入任务栏、不可最小化 | 同左 |
 | 打包目标 | AppImage / deb / rpm / pacman / Flatpak | 同左 |
 
 ## Linux
@@ -72,7 +73,8 @@ flatpak run com.deskpet.app
 ### 桌面环境
 
 - KDE Plasma（X11 或 Wayland + XWayland）：透明、置顶、托盘均正常。
-- GNOME：Wayland 下同样走 XWayland；托盘图标需要 AppIndicator 扩展（GNOME 默认不显示托盘）。「显示在所有桌面 / 全屏应用之上」默认开启，XWayland 下会设置 `_NET_WM_STATE_STICKY` / `_NET_WM_DESKTOP=-1`，切换工作区后桌宠仍可见；关闭后它只留在原工作区。
+- GNOME：Wayland 下同样走 XWayland；托盘图标需要 AppIndicator 扩展（GNOME 默认不显示托盘）。桌宠窗口类型为 `_NET_WM_WINDOW_TYPE_TOOLBAR`，WM 会设置 `_NET_WM_STATE_SKIP_TASKBAR` / `_NET_WM_STATE_SKIP_PAGER`，不会出现在任务栏或分页器，也不能被最小化成普通应用。「显示在所有桌面 / 全屏应用之上」默认开启，XWayland 下会设置 `_NET_WM_STATE_STICKY` / `_NET_WM_DESKTOP=-1`，切换工作区后桌宠仍可见；关闭后它只留在原工作区。
+- 开机自启写入的 `.desktop` 不附加 `--hidden`，登录后直接显示桌宠；只有手动执行 `deskpet --hidden` 才会隐藏启动。
 - i3 / bspwm 等：建议开启 picom 合成器，否则透明与阴影异常。
 - 无托盘实现的 WM：仍可通过快捷键 / 右键桌宠 / `--settings` 启动设置。
 
@@ -81,6 +83,7 @@ flatpak run com.deskpet.app
 | 目标 | 推荐构建系统 | 备注 |
 | --- | --- | --- |
 | AppImage / deb / rpm / pacman | Linux | CI 使用 `ubuntu-latest`；pacman 需要 fakeroot |
+| Flatpak | Linux | `scripts/build-flatpak.sh`，需要 GNOME 运行时，不需要 flatpak-builder |
 
 CI 中 Linux 只显式构建 AppImage + deb，避免 Ubuntu 缺少 pacman 打包依赖；在 Arch 上执行 `npm run dist:linux` 会构建全部 Linux 目标。
 
